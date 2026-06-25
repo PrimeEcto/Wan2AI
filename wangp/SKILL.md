@@ -114,6 +114,7 @@ python scripts/wangp.py generate --model <type> --prompt "..." [options]
 - `--output-dir DIR` (output location)
 - `--attention MODE` (sdpa/sage/sage2/flash)
 - `--profile N` (1-5, performance profile)
+- `--upscale METHOD` (spatial upsampling during generation, e.g. `lanczos2`, `flashvsr2`, `coz4`)
 - `--show` (display image after generation)
 
 **Output**: JSON with `success`, `generated_files` (paths), and any errors.
@@ -121,6 +122,43 @@ python scripts/wangp.py generate --model <type> --prompt "..." [options]
 ### Step 6: Report Results
 
 Report the output file paths to the user. If generation failed, check the error message and suggest fixes (lower resolution, different model, fewer frames).
+
+## Upscaling
+
+### Upscale During Generation
+
+Add `--upscale` to any generate call to upscale the output immediately:
+
+```bash
+python scripts/wangp.py generate --model z_image --prompt "a red fox" --upscale lanczos2 --show
+python scripts/wangp.py generate --model t2v --prompt "a sunset" --upscale flashvsr2
+```
+
+### Upscale an Existing Image/Video
+
+Use the `upscale` subcommand to upscale any existing file:
+
+```bash
+python scripts/wangp.py upscale path/to/image.jpg --method lanczos2 --show
+python scripts/wangp.py upscale path/to/video.mp4 --method flashvsr2
+```
+
+### Upscaling Methods
+
+| Method | Scale | Media | GPU Required | Notes |
+|---|---|---|---|---|
+| `lanczos2` - `lanczos4` | 2-4x | image+video | No | Fast, basic quality. Good for quick upscaling. |
+| `flashvsr2` - `flashvsr4` | 2-4x | image+video | Yes (Triton) | AI upscaling, much better quality. |
+| `flashvsr2pass2` - `flashvsr2pass4` | 2-4x | image+video | Yes | Two-pass FlashVSR, reduces banding. |
+| `coz2` - `coz16` | 2-16x | image only | Yes | Chain-of-Zoom, extreme upscaling. |
+| `flux_pid4` | 4x | image only | Yes | PiD upscaler with Flux backbone. |
+| `vae2` | 2x | during gen only | Yes | VAE-integrated, generation-time only. |
+
+**Recommended**:
+- Quick/lossless: `lanczos2`
+- Best quality video: `flashvsr2` or `flashvsr2pass2`
+- Best quality image: `flux_pid4` or `coz4`
+- Extreme upscaling: `coz8` or `coz16`
 
 ## Multi-Step Workflows
 

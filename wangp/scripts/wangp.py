@@ -247,6 +247,9 @@ def cmd_generate(args, wan2gp_root: Path) -> None:
     if args.output_dir:
         settings["_api"] = {"output_dir": str(Path(args.output_dir).resolve())}
 
+    if args.upscale:
+        settings["spatial_upsampling"] = args.upscale
+
     if args.return_media:
         settings.setdefault("_api", {})["return_media"] = True
 
@@ -385,6 +388,58 @@ def cmd_show(args, _wan2gp_root=None) -> None:
     print(json.dumps(result, indent=2))
 
 
+def cmd_upscale(args, wan2gp_root: Path) -> None:
+    import io
+    old_stdout = sys.stdout
+    sys.stdout = io.StringIO()
+    try:
+        from shared.api import init
+        session = init(root=wan2gp_root, console_output=False)
+    finally:
+        sys.stdout = old_stdout
+
+    source = str(Path(args.path).resolve())
+    print(f"Upscaling {source}...", file=sys.stderr)
+    print(f"  Method: {args.method}", file=sys.stderr)
+
+    kwargs = {"spatial_upsampling": args.method}
+    if args.output_dir:
+        kwargs["output_dir"] = str(Path(args.output_dir).resolve())
+
+    job = session.submit_media_postprocessing(source, **kwargs)
+
+    for event in job.events.iter(timeout=0.5):
+        if event.kind == "progress":
+            d = event.data
+            print(f"  [{d.phase}] {d.status}", file=sys.stderr)
+        elif event.kind == "completed":
+            break
+
+    result = job.result(timeout=300)
+
+    output = {
+        "success": result.success,
+        "generated_files": list(result.generated_files),
+        "total_tasks": result.total_tasks,
+        "successful_tasks": result.successful_tasks,
+        "failed_tasks": result.failed_tasks,
+    }
+
+    if result.errors:
+        output["errors"] = [{"message": str(e), "stage": e.stage} for e in result.errors]
+
+    print(json.dumps(output, indent=2))
+
+    if args.show and result.success and result.generated_files:
+        for f in result.generated_files:
+            display_result = display_image(f)
+            if not display_result.get("ok"):
+                print(json.dumps({"display": display_result}), file=sys.stderr)
+
+    if not result.success:
+        sys.exit(1)
+
+
 def main(argv: list[str] | None = None) -> int:
     # Auto-detect Wan2GP venv and re-exec if needed
     if not _in_wan2gp_env():
@@ -433,9 +488,16 @@ def main(argv: list[str] | None = None) -> int:
     gen_p.add_argument("--profile", type=int, choices=[1, 2, 3, 4, 5], help="Performance profile override")
     gen_p.add_argument("--return-media", action="store_true", help="Return media in-memory")
     gen_p.add_argument("--show", action="store_true", help="Display image after generation")
+    gen_p.add_argument("--upscale", help="Spatial upsampling method (e.g. lanczos2, flashvsr2, coz4, flux_pid4, vae2)")
 
     show_p = subparsers.add_parser("show", help="Display an image or video file")
     show_p.add_argument("path", help="Path to image/video file to display")
+
+    upscale_p = subparsers.add_parser("upscale", help="Upscale an existing image or video")
+    upscale_p.add_argument("path", help="Path to image or video to upscale")
+    upscale_p.add_argument("--method", default="lanczos2", help="Upscaling method (default: lanczos2). Options: lanczos{2-4}, flashvsr{2-4}, coz{2,4,8,16}, flux_pid4, vae2")
+    upscale_p.add_argument("--output-dir", help="Output directory")
+    upscale_p.add_argument("--show", action="store_true", help="Display result after upscaling")
 
     args = parser.parse_args(argv)
 
@@ -472,6 +534,8 @@ def main(argv: list[str] | None = None) -> int:
         cmd_schema(args, wan2gp_root)
     elif args.command == "generate":
         cmd_generate(args, wan2gp_root)
+    elif args.command == "upscale":
+        cmd_upscale(args, wan2gp_root)
 
     return 0
 
