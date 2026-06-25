@@ -497,6 +497,10 @@ def cmd_generate(args, wan2gp_root: Path) -> None:
     if args.upscale:
         settings["spatial_upsampling"] = args.upscale
 
+    if args.lora:
+        settings["activated_loras"] = [args.lora]
+        settings["loras_multipliers"] = args.lora_multiplier
+
     if args.return_media:
         settings.setdefault("_api", {})["return_media"] = True
 
@@ -529,6 +533,10 @@ def cmd_generate(args, wan2gp_root: Path) -> None:
 
     if result.errors:
         output["errors"] = [{"message": str(e), "stage": e.stage} for e in result.errors]
+        for e in result.errors:
+            msg = str(e).lower()
+            if any(kw in msg for kw in ["out of memory", "cuda", "oom", "killed", "memory"]):
+                output["oom_detected"] = True
 
     print(json.dumps(output, indent=2))
 
@@ -736,6 +744,8 @@ def main(argv: list[str] | None = None) -> int:
     gen_p.add_argument("--return-media", action="store_true", help="Return media in-memory")
     gen_p.add_argument("--show", action="store_true", help="Display image after generation")
     gen_p.add_argument("--upscale", help="Spatial upsampling method (e.g. lanczos2, flashvsr2, coz4, flux_pid4, vae2)")
+    gen_p.add_argument("--lora", help="LoRA URL or path to apply")
+    gen_p.add_argument("--lora-multiplier", default="1", help="LoRA multiplier (default: 1)")
 
     show_p = subparsers.add_parser("show", help="Display an image or video file")
     show_p.add_argument("path", help="Path to image/video file to display")

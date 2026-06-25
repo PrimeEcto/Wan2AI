@@ -196,7 +196,91 @@ Read `references/model-catalog.md` to match user intent to a `model_type`. Key d
 2. **Hardware**: What does `detect` report? Match VRAM to model size.
 3. **Speed vs quality**: Lightning/distilled variants are faster; base models are higher quality.
 
-For quick reference:
+#### IMAGE GENERATION HIERARCHY (best first, by hardware tier)
+
+**12GB VRAM (RTX 4070, 3060 12GB, etc.) — your default tier:**
+1. `qwen_image_2512_20B` — Best text rendering + realism. USE LIGHTNING PRESET (see below).
+2. `krea2_turbo` — Best aesthetics, 8 steps, fast.
+3. `ideogram4` — Best for typography/layout. USE TURBO PRESET (12 steps).
+4. `z_image` — Fastest, 8 steps, NAG-guided.
+5. `flux` with Turbo Alpha LoRA — Good general purpose, 10 steps.
+6. `flux2_klein_9B` — Distilled Flux 2, 4 steps, very fast.
+7. `hidream_o1_dev` — Distilled, 28 steps.
+
+**16GB+ VRAM:**
+- All above at higher quality + `flux2_dev` (32B with INT8)
+- `krea2_raw` (52 steps, maximum quality)
+- `hidream_o1` (50 steps, full quality)
+
+**8GB VRAM:**
+- `z_image` with INT8, `flux2_klein_4B`, `flux_schnell`
+
+#### VIDEO GENERATION HIERARCHY
+
+**12GB VRAM:**
+1. `t2v_sf` — Wan Lightning, 4 steps, fastest T2V
+2. `t2v_fusionix` — FusioniX, 8 steps, good motion
+3. `ltx2_22B_distilled` — LTX-2 distilled, 8 steps, with audio
+4. `t2v_1.3B` — Lightweight Wan, 30 steps
+5. `hunyuan_1_5_480_t2v` — Hunyuan 1.5 480p, 30 steps
+
+**16GB+ VRAM:**
+- `t2v` or `t2v_2_2` — Full Wan 14B, 30 steps (best quality)
+- `hunyuan` — HunyuanVideo 13B
+- `ltx2_22B` — Full LTX-2 22B
+
+#### CRITICAL: MODEL-SPECIFIC PRESETS
+
+**When user asks for Qwen Image (any variant):**
+- ALWAYS use `qwen_image_2512_20B` (latest release, not the older `qwen_image_20B`)
+- Apply Lightning preset by adding to settings:
+  ```json
+  "activated_loras": ["https://huggingface.co/DeepBeepMeep/Qwen_image/resolve/main/loras_accelerators/Qwen-Image-2512-Lightning-4steps-V1.0-bf16.safetensors"],
+  "loras_multipliers": "1",
+  "num_inference_steps": 4,
+  "guidance_scale": 1
+  ```
+- If 4-step gives OOM, try 8-step preset instead:
+  ```json
+  "activated_loras": ["https://huggingface.co/DeepBeepMeep/Qwen_image/resolve/main/loras_accelerators/Qwen-Image-2512-Lightning-8steps-V1.0-bf16.safetensors"],
+  "num_inference_steps": 8
+  ```
+
+**When user asks for Flux 2 Dev 32B:**
+- Model type: `flux2_dev`
+- Apply Turbo LoRA for 8-step generation:
+  ```json
+  "activated_loras": ["https://huggingface.co/fal/FLUX.2-dev-Turbo/resolve/main/flux.2-turbo-lora.safetensors"],
+  "loras_multipliers": "1",
+  "num_inference_steps": 8
+  ```
+- If OOM, fall back to `flux2_klein_9B` (distilled, 4 steps, much less VRAM)
+
+**When user asks for Flux 1 (any variant):**
+- Apply Turbo Alpha LoRA for 10-step generation:
+  ```json
+  "activated_loras": ["https://huggingface.co/DeepBeepMeep/Flux/resolve/main/loras_accelerators/FLUX.1-Turbo-Alpha.safetensors"],
+  "loras_multipliers": "1",
+  "num_inference_steps": 10,
+  "embedded_guidance_scale": 3.5
+  ```
+
+**When user asks for Ideogram:**
+- Default is 20 steps. For faster: use Turbo preset (12 steps).
+- Model type: `ideogram4` (FP8, 9.3B)
+
+**When user asks for Krea 2:**
+- Use `krea2_turbo` (8 steps) by default, not `krea2_raw` (52 steps)
+
+#### OOM DETECTION AND RECOVERY
+
+If generation fails with OOM (out of memory), CUDA error, or killed signal:
+1. Tell the user: "Generation ran out of memory. Let me try a smaller model/fewer steps."
+2. If using Qwen 2512 4-step → try 8-step preset
+3. If using Flux 2 Dev 32B → fall back to `flux2_klein_9B`
+4. If using any 14B+ model → try the 1.3B or distilled variant
+5. Lower resolution: 1280x720 → 832x480
+6. If still failing: suggest a fundamentally smaller model (Z-Image, Flux 2 Klein 4B)
 - **Best images**: `flux` (12B), `qwen_image_20B` (20B), `hidream_o1` (10B)
 - **Fast images**: `z_image` (6B, 8 steps), `flux_schnell` (12B, fast)
 - **Best video**: `t2v` or `t2v_2_2` (Wan 14B), `hunyuan` (13B)
