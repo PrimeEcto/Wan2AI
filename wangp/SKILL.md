@@ -12,34 +12,94 @@ Generate images and videos locally using Wan2GP's 200+ AI models. Covers text-to
 - Wan2GP installed (via Pinokio or standalone)
 - Python environment with Wan2GP dependencies
 
-## Image Display Preference (per session)
+## Image Display and User Interaction (per harness)
 
-On the FIRST generation in a session, ask the user:
+### Displaying Images
 
-> "Do you want generated images displayed in the terminal after each generation?"
+Different harnesses display images differently. Use the method appropriate for your environment:
 
-- **If yes**: Remember this for the rest of the session. Before the first `--show` usage, check if a terminal image viewer is installed. If not, auto-install one:
-  - Try `cargo install viu` (if cargo is available)
-  - Else try `pip install viuer` + use Python PIL fallback
-  - Else try `apt install chafa` / `brew install chafa` (platform-dependent)
-  - After install, verify it works with `which viu` or `which chafa`
-- **If no**: Never use `--show`. Just report file paths.
-- **Only stop showing** if the user explicitly says "don't show images", "stop displaying", or similar. Do NOT stop based on inference or silence.
-- When showing is enabled, ALWAYS pass `--show` to `generate` calls and use `show` for any file path the user asks about.
+**MiMoCode / Codex / Claude Code** (has `Read` tool for images):
+- After generation, use the `Read` tool on the generated image file path. The tool will display the image inline in the conversation.
+- Do NOT use `--show` or `viu` — the `Read` tool handles display natively.
+- Example: After `wangp.py generate` returns a path, call `Read(path="/path/to/image.jpg")`.
+
+**Cursor / VS Code extensions (Cline, Roo, GitHub Copilot)** (IDE-based):
+- Images display inline in the IDE chat panel when referenced.
+- After generation, tell the user the file path. The IDE may auto-preview images in the workspace.
+- For explicit display, use `Read` tool if available, or mention the path so the user can click to open.
+
+**Terminal-based agents (Gemini CLI, OpenCode, Warp, Hermes Agent, etc.)**:
+- Use `--show` flag on `generate` to display via `viu`/`chafa`.
+- Auto-install `viu` if needed: `cargo install viu` or `apt install chafa`.
+- Fallback: report the file path and let the user open it.
+
+**General rule**: If the harness has a `Read` tool that supports images, prefer that over `--show`. If not, use `--show` with a terminal image viewer.
+
+### Asking User Questions
+
+Different harnesses have different mechanisms for asking the user questions:
+
+**MiMoCode / Codex** (has `question` tool):
+- Use the `question` tool for structured questions with predefined options.
+- Example for display preference:
+  ```
+  question(questions=[{
+    question: "Do you want generated images displayed after each generation?",
+    header: "Image display",
+    options: [
+      {label: "Yes, show images", description: "Display images in terminal after each generation"},
+      {label: "No, just paths", description: "Only report the file path"}
+    ]
+  }])
+  ```
+- Use `question` tool for model selection, upscaling method choice, resolution selection, etc.
+
+**Claude Code** (conversational):
+- Ask questions directly in conversation. Claude Code does not have a structured question tool.
+- Present options as a numbered list and ask the user to pick.
+
+**Cursor / VS Code extensions**:
+- Ask questions in the chat panel. Present options as a numbered or bulleted list.
+
+**Hermes Agent** (has `Clarify` function):
+- Use Hermes Agent's native `Clarify` function for structured questions when available.
+- Fall back to conversational questions if Clarify is not accessible.
+
+**Other harnesses**:
+- Ask questions conversationally in the chat.
+- Present options as a numbered list.
+- Keep questions concise — most harnesses don't have structured input mechanisms.
+
+### Harness-Specific Capabilities
+
+| Harness | Image Display | Question Method | Special |
+|---|---|---|---|
+| MiMoCode | `Read` tool | `question` tool | Hooks, tools, TUI plugins |
+| Codex | `Read` tool | `question` tool | MCP, plugins, marketplace |
+| Claude Code | `Read` tool | Conversational | `context: fork`, hooks, MCP |
+| Cursor | IDE chat panel | Conversational | IDE integration |
+| Cline | IDE chat panel | Conversational | Browser automation, MCP |
+| Roo Code | IDE chat panel | Conversational | Multi-mode agent |
+| GitHub Copilot | VS Code chat | Conversational | VS Code integration |
+| Gemini CLI | Terminal (`--show`) | Conversational | Open source |
+| OpenCode | Terminal (`--show`) | Conversational | Open source |
+| Hermes Agent | Terminal (`--show`) | `Clarify` function | Structured input |
+| Warp | Terminal (`--show`) | Conversational | Terminal integration |
+| Kiro CLI | IDE panel | Conversational | Spec-driven dev |
+| Goose | Terminal (`--show`) | Conversational | MCP extensible |
 
 ## Displaying Results
 
-Generated images can be displayed directly:
+For harnesses with a `Read` tool that supports images (MiMoCode, Codex, Claude Code): use `Read` on the generated file path. Do NOT use `--show`.
+
+For terminal-based harnesses (Gemini CLI, OpenCode, Warp, Hermes Agent): use `--show` flag or `show` subcommand:
 
 ```bash
-# Show an existing file
-python scripts/wangp.py show path/to/image.jpg
-
-# Generate and show immediately
 python scripts/wangp.py generate --model z_image --prompt "a red fox" --show
+python scripts/wangp.py show path/to/image.jpg
 ```
 
-Display methods (tried in order):
+Terminal display methods (tried in order):
 1. `viu` — fast Rust terminal image viewer (recommended: `cargo install viu`)
 2. `chafa` — versatile terminal viewer (`apt install chafa` / `brew install chafa`)
 3. `timg` — terminal media viewer
