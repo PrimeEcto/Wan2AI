@@ -9,8 +9,8 @@ Generate images and videos locally using Wan2GP's 200+ AI models. Covers text-to
 
 ## Prerequisites
 
-- Wan2GP installed (via Pinokio or standalone)
-- Python environment with Wan2GP dependencies
+- **Wan2GP**: The skill checks for Wan2GP on first use. If not found, it offers to install automatically via Pinokio's headless CLI (recommended). Manual install also works: https://github.com/DeepBeepMeep/Wan2GP
+- **Pinokio** (optional, for auto-install): `npm install -g pinokio` — the skill can install this automatically if needed.
 
 ## Image Display and User Interaction (per harness)
 
@@ -121,26 +121,48 @@ If the user hasn't used this skill before, explain the full workflow upfront:
 
 Never silently start reading Wan2GP files or running commands without context.
 
-### Step 0: Check Wan2GP Version
+### Step 0: Check Wan2GP Installation
 
 ```bash
 python scripts/wangp.py detect
 ```
 
-The `detect` output includes `wan2gp_version` and `wan2gp_update_available`. If an update is available, tell the user:
+The `detect` output includes `wan2gp_version`, `wan2gp_update_available`, and `python_env_ok`.
 
-> "Wan2GP has an update available (current: X, latest: Y). Want me to update it?"
+**If Wan2GP is fully working** (version detected, python_env_ok=true):
+- Check `wan2gp_update_available`. If true, tell the user: "Wan2GP has an update available (current: X, latest: Y). Want me to update it?"
+- If they say yes: `python scripts/wangp.py update`
+- Proceed to Step 1.
 
-If they say yes, run:
+**If Wan2GP is NOT found or NOT working** (detect fails, python_env_ok=false, missing dependencies):
+
+Do NOT try to manually install Wan2GP dependencies (pip install diffusers, torch, etc.). This wastes tokens and time. Instead, offer to install via Pinokio's headless CLI:
+
+> "Wan2GP is not installed or not set up. I can install it automatically via Pinokio's headless CLI, which handles all dependencies, GPU setup, and model downloads. This is the fastest and most reliable method. Want me to proceed?"
+
+If they say yes, run these 3 steps in order:
+
 ```bash
-python scripts/wangp.py update
+# 1. Install Pinokio core headlessly (skip if already installed)
+npm install -g pinokio
+
+# 2. Download Wan2GP into Pinokio's app cache
+pinokio download https://github.com/6Morpheus6/wan2gp
+
+# 3. Run Wan2GP's install script (handles venv, CUDA, torch, all deps)
+pinokio run ~/.pinokio/api/wan2gp/install.js
 ```
 
-If Wan2GP is not found, tell the user clearly:
+After install completes, set `WAN2GP_ROOT` and re-run `detect`:
+```bash
+export WAN2GP_ROOT=~/.pinokio/api/wan2gp/app
+python scripts/wangp.py detect
+```
 
-> "Wan2GP is not installed. Install it via Pinokio (recommended) or from https://github.com/DeepBeepMeep/Wan2GP. Set WAN2GP_ROOT env var if it's in a non-standard location."
+**If the user declines Pinokio install**, tell them:
+> "You can also install Wan2GP manually from https://github.com/DeepBeepMeep/Wan2GP. Once installed, set WAN2GP_ROOT to the app directory."
 
-Do NOT start reading random Wan2GP files to "figure it out." Just tell the user what's needed.
+Do NOT attempt manual pip/conda installs. Do NOT read Wan2GP source files to "figure out" the installation. Either use Pinokio or let the user handle it manually.
 
 ### Step 1: Detect Hardware
 
