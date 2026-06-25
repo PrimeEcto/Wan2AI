@@ -123,11 +123,22 @@ Never silently start reading Wan2GP files or running commands without context.
 
 ### Step 0: Check Wan2GP Installation
 
+**Before running detect**, ask the user if they want the agent to search for Wan2GP. Searching scans multiple drives and costs context/tokens. Give them these options:
+
+> "I need to find your Wan2GP installation. How would you like to proceed?"
+>
+> 1. **Search for it** — I'll scan your drives to find the best Wan2GP install (uses some tokens)
+> 2. **I'll navigate there myself** — Close this and run your CLI/harness from the Wan2GP directory directly
+> 3. **I don't have Wan2GP** — Install it automatically via Pinokio
+
+(Use the `question` tool for MiMoCode/Codex, numbered list for other harnesses.)
+
+**If user chooses "Search for it"**:
 ```bash
 python scripts/wangp.py detect
 ```
 
-The `detect` output includes `wan2gp_version`, `wan2gp_update_available`, and `python_env_ok`.
+The `detect` output includes `wan2gp_version`, `wan2gp_update_available`, `python_env_ok`, and if multiple installs exist, `all_installations` showing all found paths with maturity scores. The highest-scored install is automatically selected.
 
 **If Wan2GP is fully working** (version detected, python_env_ok=true):
 - Check `wan2gp_update_available`. If true, tell the user: "Wan2GP has an update available (current: X, latest: Y). Want me to update it?"
@@ -138,7 +149,7 @@ The `detect` output includes `wan2gp_version`, `wan2gp_update_available`, and `p
 
 Do NOT try to manually install Wan2GP dependencies (pip install diffusers, torch, etc.). This wastes tokens and time. Instead, offer to install via Pinokio's headless CLI:
 
-> "Wan2GP is not installed or not set up. I can install it automatically via Pinokio's headless CLI, which handles all dependencies, GPU setup, and model downloads. This is the fastest and most reliable method. Want me to proceed?"
+> "Wan2GP is not installed or not set up. I can install it automatically via Pinokio's headless CLI, which handles all dependencies, GPU setup, and model downloads. Want me to proceed?"
 
 If they say yes, run these 3 steps in order:
 
@@ -163,6 +174,11 @@ python scripts/wangp.py detect
 > "You can also install Wan2GP manually from https://github.com/DeepBeepMeep/Wan2GP. Once installed, set WAN2GP_ROOT to the app directory."
 
 Do NOT attempt manual pip/conda installs. Do NOT read Wan2GP source files to "figure out" the installation. Either use Pinokio or let the user handle it manually.
+
+**If user chooses "I'll navigate there myself"**:
+> "No problem. Navigate to your Wan2GP directory in your terminal, then launch your CLI/harness from there. The skill will find Wan2GP automatically when you run it from that directory."
+
+Do NOT search. Do NOT run detect. Stop here and let the user handle it.
 
 ### Step 1: Detect Hardware
 

@@ -21,32 +21,167 @@ from pathlib import Path
 
 
 def find_wan2gp_root() -> Path | None:
-    """Discover Wan2GP installation root (the 'app' directory)."""
+    """Discover the most mature Wan2GP installation across all drives."""
+    candidates = _collect_wan2gp_candidates()
+    if not candidates:
+        return None
+
+    # Score each candidate and return the best
+    scored = []
+    for p in candidates:
+        score = _score_wan2gp_install(p)
+        scored.append((score, p))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return scored[0][1]
+
+
+def _collect_wan2gp_candidates() -> list[Path]:
+    """Find all Wan2GP app directories across the system."""
+    found = set()
+    candidates = []
+
+    def _add(p: Path):
+        try:
+            resolved = p.resolve()
+            if resolved not in found and (resolved / "shared" / "api.py").exists():
+                found.add(resolved)
+                candidates.append(resolved)
+        except (OSError, PermissionError):
+            pass
+
+    # 1. Explicit env var
     env_root = os.environ.get("WAN2GP_ROOT")
     if env_root:
         p = Path(env_root)
-        if (p / "shared" / "api.py").exists():
-            return p.resolve()
-        if (p / "app" / "shared" / "api.py").exists():
-            return (p / "app").resolve()
+        _add(p)
+        _add(p / "app")
 
+    # 2. Script ancestor walk
     script_dir = Path(__file__).resolve().parent
     for ancestor in [script_dir, *script_dir.parents]:
-        candidate = ancestor / "app" / "shared" / "api.py"
-        if candidate.exists():
-            return (ancestor / "app").resolve()
+        _add(ancestor / "app")
 
+    # 3. Pinokio home env
     pinokio_home = os.environ.get("PINOKIO_HOME")
     if pinokio_home:
-        candidate = Path(pinokio_home) / "api" / "wan.git" / "app"
-        if (candidate / "shared" / "api.py").exists():
-            return candidate.resolve()
+        _add(Path(pinokio_home) / "api" / "wan.git" / "app")
+        _add(Path(pinokio_home) / "api" / "wan2gp" / "app")
 
-    default_pinokio = Path.home() / ".pinokio" / "api" / "wan.git" / "app"
-    if (default_pinokio / "shared" / "api.py").exists():
-        return default_pinokio.resolve()
+    # 4. Default Pinokio location
+    _add(Path.home() / ".pinokio" / "api" / "wan.git" / "app")
+    _add(Path.home() / ".pinokio" / "api" / "wan2gp" / "app")
 
-    return None
+    # 5. Scan all mount points / drives for Pinokio-style installs
+    _scan_mount_points(candidates, found)
+
+    # 6. Common manual install locations
+    for base in [Path.home(), Path("/opt"), Path("/usr/local")]:
+        _add(base / "Wan2GP" / "app")
+        _add(base / "wan2gp" / "app")
+        _add(base / "Wan2GP")
+        _add(base / "wan2gp")
+
+    return candidates
+
+
+def _scan_mount_points(candidates: list[Path], found: set):
+    """Scan mounted drives for Pinokio api directories."""
+    import subprocess as _sp
+
+    # Get mount points
+    mounts = set()
+    try:
+        r = _sp.run(["mount"], capture_output=True, text=True, timeout=5)
+        if r.returncode == 0:
+            for line in r.stdout.splitlines():
+                parts = line.split()
+                if len(parts) >= 3 and parts[1] == "on":
+                    mount = parts[2]
+                    if mount.startswith("/") and mount not in ("/", "/proc", "/sys", "/dev", "/run"):
+                        mounts.add(Path(mount))
+    except Exception:
+        pass
+
+    # Also check common drive locations
+    for d in ["/data", "/mnt", "/media", "/home", "/opt", "/srv"]:
+        p = Path(d)
+        if p.exists():
+            mounts.add(p)
+
+    # Check user's home on each mount
+    home_name = Path.home().name
+    for mount in mounts:
+        # Pinokio api dirs on this mount
+        for pattern in [
+            mount / "pinokio" / "api" / "wan.git" / "app",
+            mount / "pinokio" / "api" / "wan2gp" / "app",
+            mount / ".pinokio" / "api" / "wan.git" / "app",
+            mount / ".pinokio" / "api" / "wan2gp" / "app",
+            mount / home_name / ".pinokio" / "api" / "wan.git" / "app",
+            mount / home_name / ".pinokio" / "api" / "wan2gp" / "app",
+            mount / home_name / "Wan2GP" / "app",
+            mount / home_name / "wan2gp" / "app",
+        ]:
+            try:
+                resolved = pattern.resolve()
+                if resolved not in found and (resolved / "shared" / "api.py").exists():
+                    found.add(resolved)
+                    candidates.append(resolved)
+            except (OSError, PermissionError):
+                pass
+
+
+def _score_wan2gp_install(app_dir: Path) -> int:
+    """Score a Wan2GP installation by maturity. Higher = more mature."""
+    score = 0
+    parent = app_dir.parent
+
+    # Has working Python venv
+    for venv in ["env", "venv", ".venv"]:
+        venv_python = app_dir / venv / "bin" / "python"
+        if venv_python.exists():
+            score += 50
+            break
+
+    # Has wgp_config.json (has been configured/used)
+    if (app_dir / "wgp_config.json").exists():
+        score += 20
+
+    # Has downloaded models (checkpoints)
+    ckpt_dir = parent / "checkpoints"
+    if ckpt_dir.exists():
+        model_count = sum(1 for _ in ckpt_dir.rglob("*.safetensors"))
+        score += min(model_count * 5, 100)  # up to 100 points for models
+
+    # Has outputs (has been actively used)
+    output_dir = app_dir / "outputs"
+    if output_dir.exists():
+        file_count = sum(1 for _ in output_dir.iterdir() if _.is_file())
+        score += min(file_count * 2, 50)  # up to 50 points for outputs
+
+    # Version check
+    wgp_file = app_dir / "wgp.py"
+    if wgp_file.exists():
+        try:
+            content = wgp_file.read_text()
+            import re
+            m = re.search(r'WanGP_version\s*=\s*"([^"]+)"', content)
+            if m:
+                version = m.group(1)
+                # Parse version as float for comparison
+                try:
+                    score += int(float(version) * 10)
+                except ValueError:
+                    pass
+        except Exception:
+            pass
+
+    # Is a git repo (can be updated)
+    if (parent / ".git").exists():
+        score += 10
+
+    return score
 
 
 def find_wan2gp_python(wan2gp_root: Path) -> str | None:
@@ -148,6 +283,17 @@ def cmd_detect(args, wan2gp_root: Path) -> None:
     result["wan2gp_version"] = version_info.get("version")
     result["wan2gp_update_available"] = version_info.get("update_available", False)
     result["wan2gp_latest_version"] = version_info.get("latest_version")
+
+    # Show all found installations
+    all_candidates = _collect_wan2gp_candidates()
+    if len(all_candidates) > 1:
+        installs = []
+        for p in all_candidates:
+            score = _score_wan2gp_install(p)
+            ver = get_wan2gp_version(p).get("version", "unknown")
+            installs.append({"path": str(p), "version": ver, "score": score, "selected": p == wan2gp_root})
+        installs.sort(key=lambda x: x["score"], reverse=True)
+        result["all_installations"] = installs
 
     print(json.dumps(result, indent=2))
 
