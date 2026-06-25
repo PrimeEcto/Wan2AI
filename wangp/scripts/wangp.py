@@ -143,7 +143,108 @@ def cmd_detect(args, wan2gp_root: Path) -> None:
     wgp_python = find_wan2gp_python(wan2gp_root)
     result["python"] = wgp_python
     result["python_env_ok"] = _in_wan2gp_env()
+
+    version_info = get_wan2gp_version(wan2gp_root)
+    result["wan2gp_version"] = version_info.get("version")
+    result["wan2gp_update_available"] = version_info.get("update_available", False)
+    result["wan2gp_latest_version"] = version_info.get("latest_version")
+
     print(json.dumps(result, indent=2))
+
+
+def get_wan2gp_version(wan2gp_root: Path) -> dict:
+    """Check Wan2GP version and if an update is available."""
+    info = {"version": None, "update_available": False, "latest_version": None}
+
+    # Get current version from wgp.py
+    wgp_file = wan2gp_root / "wgp.py"
+    if wgp_file.exists():
+        try:
+            content = wgp_file.read_text()
+            import re
+            m = re.search(r'WanGP_version\s*=\s*"([^"]+)"', content)
+            if m:
+                info["version"] = m.group(1)
+        except Exception:
+            pass
+
+    # Check for git updates
+    git_dir = wan2gp_root.parent / ".git"
+    if git_dir.exists():
+        try:
+            # Fetch latest
+            r = subprocess.run(
+                ["git", "fetch", "--quiet"],
+                cwd=str(wan2gp_root.parent),
+                capture_output=True, timeout=15
+            )
+            if r.returncode == 0:
+                # Compare local vs remote
+                local = subprocess.run(
+                    ["git", "rev-parse", "HEAD"],
+                    cwd=str(wan2gp_root.parent),
+                    capture_output=True, text=True, timeout=5
+                )
+                remote = subprocess.run(
+                    ["git", "rev-parse", "origin/main"],
+                    cwd=str(wan2gp_root.parent),
+                    capture_output=True, text=True, timeout=5
+                )
+                if local.returncode == 0 and remote.returncode == 0:
+                    if local.stdout.strip() != remote.stdout.strip():
+                        info["update_available"] = True
+                        # Get latest version from remote wgp.py
+                        try:
+                            remote_content = subprocess.run(
+                                ["git", "show", "origin/main:app/wgp.py"],
+                                cwd=str(wan2gp_root.parent),
+                                capture_output=True, text=True, timeout=5
+                            )
+                            if remote_content.returncode == 0:
+                                import re
+                                m = re.search(r'WanGP_version\s*=\s*"([^"]+)"', remote_content.stdout)
+                                if m:
+                                    info["latest_version"] = m.group(1)
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+
+    return info
+
+
+def cmd_update(wan2gp_root: Path) -> None:
+    """Pull latest Wan2GP updates via git."""
+    repo_dir = wan2gp_root.parent
+    git_dir = repo_dir / ".git"
+
+    if not git_dir.exists():
+        print(json.dumps({"error": "Not a git repository. Update manually or reinstall via Pinokio."}))
+        return
+
+    print("Checking for Wan2GP updates...", file=sys.stderr)
+
+    # Fetch
+    r = subprocess.run(["git", "fetch"], cwd=str(repo_dir), capture_output=True, text=True, timeout=30)
+    if r.returncode != 0:
+        print(json.dumps({"error": f"git fetch failed: {r.stderr.strip()}"}))
+        return
+
+    # Check diff
+    local = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(repo_dir), capture_output=True, text=True, timeout=5)
+    remote = subprocess.run(["git", "rev-parse", "origin/main"], cwd=str(repo_dir), capture_output=True, text=True, timeout=5)
+
+    if local.stdout.strip() == remote.stdout.strip():
+        print(json.dumps({"status": "up_to_date", "message": "Wan2GP is already up to date."}))
+        return
+
+    # Pull
+    print("Updating Wan2GP...", file=sys.stderr)
+    r = subprocess.run(["git", "pull"], cwd=str(repo_dir), capture_output=True, text=True, timeout=60)
+    if r.returncode == 0:
+        print(json.dumps({"status": "updated", "message": "Wan2GP updated successfully.", "output": r.stdout.strip()}))
+    else:
+        print(json.dumps({"error": f"git pull failed: {r.stderr.strip()}"}))
 
 
 def cmd_list(args, wan2gp_root: Path) -> None:
@@ -499,6 +600,8 @@ def main(argv: list[str] | None = None) -> int:
     upscale_p.add_argument("--output-dir", help="Output directory")
     upscale_p.add_argument("--show", action="store_true", help="Display result after upscaling")
 
+    subparsers.add_parser("update", help="Check for and apply Wan2GP updates")
+
     args = parser.parse_args(argv)
 
     if args.command == "detect":
@@ -536,6 +639,8 @@ def main(argv: list[str] | None = None) -> int:
         cmd_generate(args, wan2gp_root)
     elif args.command == "upscale":
         cmd_upscale(args, wan2gp_root)
+    elif args.command == "update":
+        cmd_update(wan2gp_root)
 
     return 0
 

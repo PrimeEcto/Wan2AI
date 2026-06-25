@@ -109,6 +109,39 @@ Terminal display methods (tried in order):
 
 ## Workflow
 
+### IMPORTANT: Transparency First
+
+Before doing ANYTHING, tell the user what you're about to do. The skill runs detection, reads Wan2GP files, and calls its API — this can look suspicious if unexplained. Always start with a brief explanation like:
+
+> "I'll set up Wan2GP for you. First I need to detect your hardware and check the Wan2GP installation."
+
+If the user hasn't used this skill before, explain the full workflow upfront:
+
+> "Here's what I'll do: detect your GPU/VRAM, recommend the best model, adapt the prompt for that model, generate the media, and optionally display it."
+
+Never silently start reading Wan2GP files or running commands without context.
+
+### Step 0: Check Wan2GP Version
+
+```bash
+python scripts/wangp.py detect
+```
+
+The `detect` output includes `wan2gp_version` and `wan2gp_update_available`. If an update is available, tell the user:
+
+> "Wan2GP has an update available (current: X, latest: Y). Want me to update it?"
+
+If they say yes, run:
+```bash
+python scripts/wangp.py update
+```
+
+If Wan2GP is not found, tell the user clearly:
+
+> "Wan2GP is not installed. Install it via Pinokio (recommended) or from https://github.com/DeepBeepMeep/Wan2GP. Set WAN2GP_ROOT env var if it's in a non-standard location."
+
+Do NOT start reading random Wan2GP files to "figure it out." Just tell the user what's needed.
+
 ### Step 1: Detect Hardware
 
 ```bash
