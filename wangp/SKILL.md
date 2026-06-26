@@ -11,22 +11,40 @@ Generate images and videos locally using Wan2GP's 200+ AI models.
 
 **STOP. Read this entire checklist before taking any action. Execute each step in order. Do not skip steps.**
 
-### Step A: Ask before searching
+### Step A: Try to find Wan2GP automatically first
 
-Before running `detect` or reading any Wan2GP files, ask the user:
+Run detect immediately — do NOT ask the user first:
 
-> "I need to find your Wan2GP installation. How would you like to proceed?"
-> 1. **Search for it** — I'll scan your drives (uses some tokens)
-> 2. **I'll navigate there myself** — I'll run from the Wan2GP directory
-> 3. **I don't have Wan2GP** — Install it via Pinokio
+```bash
+python scripts/wangp.py detect
+```
+
+**If detect succeeds** (returns valid JSON with `wan2gp_root`): Wan2GP is found. Skip to Step C.
+
+**If detect fails** (returns `"Wan2GP not found"`): NOW ask the user:
+
+> "Wan2GP is not installed or not found in the current location. How would you like to proceed?"
+> 1. **Search all drives** — I'll scan for it (uses some tokens)
+> 2. **Install via Pinokio** — I'll install it automatically
+> 3. **I'll handle it myself** — I'll install it and come back
 
 Use the `question` tool for MiMoCode/Codex. For other harnesses, present as a numbered list.
 
-Only proceed to Step B if the user chooses option 1 or 3.
+If user chooses 1, re-run `detect` (it will scan all drives). If user chooses 2, run the Pinokio install (see Step A2 below). If user chooses 3, stop and let the user handle it.
+
+### Step A2: Pinokio install (only if user chose option 2)
+
+```bash
+npm install -g pinokio
+pinokio download https://github.com/6Morpheus6/wan2gp
+pinokio run ~/.pinokio/api/wan2gp/install.js
+export WAN2GP_ROOT=~/.pinokio/api/wan2gp/app
+python scripts/wangp.py detect
+```
 
 ### Step B: Offer browser gallery
 
-After the user responds, ask:
+After Wan2GP is found (either from Step A success or after user action), ask:
 
 > "Would you like a live gallery in your browser? Images will appear automatically as they're generated with a dark-themed viewer, history, and zoom."
 
@@ -39,21 +57,13 @@ bash "$SKILL_DIR/scripts/viewer/start.sh" --gallery-dir /tmp/wangp-gallery --ope
 
 Save the `gallery_dir` from the output. Use it as `--output-dir` for ALL generations.
 
-### Step C: Detect hardware
+### Step C: Check version
 
-```bash
-python scripts/wangp.py detect
-```
+The `detect` output from Step A includes `wan2gp_version` and `wan2gp_update_available`. If an update is available, ask the user:
 
-If Wan2GP is not found and the user chose option 1 in Step A, offer Pinokio install:
+> "Wan2GP has an update available (current: X, latest: Y). Want me to update it?"
 
-```bash
-npm install -g pinokio
-pinokio download https://github.com/6Morpheus6/wan2gp
-pinokio run ~/.pinokio/api/wan2gp/install.js
-```
-
-If Wan2GP is found, check `wan2gp_update_available`. If true, ask the user before updating.
+If they say yes: `python scripts/wangp.py update`
 
 ### Step D: Generate
 

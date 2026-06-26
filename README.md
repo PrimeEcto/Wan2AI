@@ -45,20 +45,27 @@ That's it. The skill is now available to all supported AI agents on your system.
 
 ### 2. Use It
 
-Open your AI agent and ask it to generate something:
+Open your AI agent and invoke the skill with `/wangp` followed by your request:
 
 ```
-"Generate an image of a red fox in a snowy forest"
+/wangp Generate an image of a red fox in a snowy forest
 ```
 ```
-"Make a video of a sunset over the ocean with cinematic camera movement"
+/wangp Make a video of a sunset over the ocean
 ```
 ```
-"Create a talking head video from this portrait"
+/wangp Create a talking head video from this portrait
 ```
 ```
-"Generate a lo-fi hip hop beat"
+/wangp Generate a lo-fi hip hop beat
 ```
+
+The `/wangp` prefix tells the agent to load the Wan2AI skill. In most harnesses (MiMoCode, Codex, Claude Code, Cursor, Gemini CLI, Hermes Agent), this activates the skill so the agent follows the correct workflow.
+
+Some harnesses may use a different syntax:
+- **MiMoCode / Codex**: `/wangp <prompt>` or just mention "generate an image" (auto-triggers)
+- **Claude Code**: `/wangp <prompt>` or the agent may auto-detect
+- **Hermes Agent**: The agent invokes the skill automatically when you ask to generate media
 
 The agent handles everything: hardware detection, model selection, prompt adaptation, generation, and display.
 
