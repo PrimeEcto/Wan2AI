@@ -92,27 +92,51 @@ Different harnesses have different mechanisms for asking the user questions:
 
 ### Browser Gallery (preferred for all harnesses)
 
-Start a lightweight gallery server that shows images in the browser with live updates, history, and zoom. Ask the user once per session:
+A built-in gallery server shows generated images in the browser with live auto-refresh, history thumbnails, zoom, and keyboard navigation. This works across ALL harnesses because it's just a browser tab.
 
-> "Would you like a live gallery in your browser? Images will appear automatically as they're generated."
+**Setup (once per session):**
 
-If yes, start the server before the first generation:
+Ask the user:
+> "Would you like a live gallery in your browser? Images will appear automatically as they're generated. I'll start a local server and open it for you."
 
-```bash
-scripts/viewer/start.sh --gallery-dir /tmp/wangp-gallery --open
-```
-
-This returns a JSON with `url` and `gallery_dir`. Use `gallery_dir` as the `--output-dir` for all subsequent generations:
+If yes, start the server. The `start.sh` script is at `scripts/viewer/start.sh` relative to the skill directory. Find the skill path first:
 
 ```bash
-python scripts/wangp.py generate --model z_image --prompt "a red fox" --output-dir /tmp/wangp-gallery
+# Find skill directory (harness-dependent)
+SKILL_DIR="<path to wangp skill directory>"
+
+# Start gallery server and open browser
+bash "$SKILL_DIR/scripts/viewer/start.sh" --gallery-dir /tmp/wangp-gallery --open
 ```
 
-The browser auto-refreshes every 2 seconds and shows a toast notification for new images. Features:
-- Gallery history with thumbnails
-- Click to zoom, arrow keys to navigate
-- Image dimensions and filename display
-- Dark theme optimized for viewing generated images
+This outputs JSON with `url`, `gallery_dir`, and `port`. Save the `gallery_dir` — use it as `--output-dir` for ALL generations in this session.
+
+**Generation with gallery:**
+
+```bash
+python scripts/wangp.py generate --model z_image --prompt "a red fox" --output-dir /tmp/wangp-gallery --show
+```
+
+The `--output-dir` sends the image to the gallery folder. The `--show` is a fallback for terminal display. The browser auto-refreshes every 2 seconds and shows a toast notification for new images.
+
+**Gallery features:**
+- Live auto-refresh (polling + SSE for instant updates)
+- History strip with clickable thumbnails
+- Click to zoom, arrow keys to navigate between images
+- Image dimensions and filename metadata
+- Dark theme optimized for viewing generated images against a neutral background
+- Keyboard shortcuts: `←` `→` navigate, `space` zoom, `esc` close
+
+**Multiple generations:**
+
+Every generation in the session should use the same `--output-dir`. The gallery accumulates all images and sorts by newest first. The user can browse their full generation history.
+
+**Stopping the server:**
+
+The server auto-exits after 4 hours idle. To stop manually:
+```bash
+kill $(cat /tmp/.viewer-state/server-info | python3 -c "import json,sys; print(json.load(sys.stdin)['pid'])")
+```
 
 ### Harness-Specific Fallbacks
 
@@ -125,6 +149,24 @@ If the user declines the browser gallery:
 **Terminal-based harnesses (Gemini CLI, OpenCode, Warp, Hermes Agent)**:
 - Use `--show` flag: `python scripts/wangp.py generate --model z_image --prompt "a red fox" --show`
 - Falls back through: viu → chafa → timg → iTerm2/Kitty → PIL show
+
+### Design Principles for Generated HTML
+
+When the agent creates HTML content (gallery screens, comparison views, before/after layouts), apply these principles:
+
+**Ground it in the subject.** The viewer exists to showcase AI-generated images — don't distract from them. The dark background (`#0a0a0c`) makes images pop. The chrome (header, controls) should be minimal and recede.
+
+**Typography carries personality.** Use Inter for UI text and JetBrains Mono for metadata/technical info. Don't use generic system fonts — the type treatment should feel intentional. Keep font weights light (300-500) for a studio/gallery feel.
+
+**Structure is information.** Gallery thumbnails encode chronological order. Image metadata (dimensions, filename) is functional, not decorative. Don't add numbered markers or labels unless they carry real information.
+
+**Spend boldness in one place.** The image itself is the hero — everything else supports it. The one distinctive element is the smooth fade-in animation on new images. Keep all other UI elements quiet and disciplined.
+
+**Match complexity to content.** A single image needs minimal chrome. A gallery of 20 images needs the history strip. Side-by-side comparisons need split layouts. Scale the UI to what the user is actually doing.
+
+**Write from the user's side.** "New image generated" not "Image saved to filesystem." "Gallery" not "Image output directory." "Zoom" not "Toggle fullscreen mode."
+
+**Treat emptiness as invitation.** When no images exist yet, show a clear message: "Your generated images will appear here" with a hint: "run a generation in your terminal to begin." Don't apologize or explain what's missing.
 
 ## Workflow
 
