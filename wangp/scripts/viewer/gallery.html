@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wan2AI Gallery</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg-deep: #0a0a0c;
+    --bg-surface: #111114;
+    --bg-elevated: #1a1a1f;
+    --bg-hover: #222228;
+    --border: #2a2a32;
+    --border-subtle: #1e1e24;
+    --text-primary: #e8e6e3;
+    --text-secondary: #8a8a96;
+    --text-muted: #5a5a66;
+    --accent: #7c6aef;
+    --accent-glow: rgba(124, 106, 239, 0.15);
+    --accent-soft: #6b5ce7;
+    --success: #3dd68c;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --shadow-lg: 0 24px 48px rgba(0,0,0,0.4);
+    --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+    color: white;
+    letter-spacing: -0.5px;
+  }
+
+  .header-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+  }
+
+  .header-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 8px rgba(61, 214, 140, 0.4);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .status-dot.waiting {
+    background: var(--text-muted);
+    box-shadow: none;
+    animation: none;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Main content */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Hero image area */
+  .hero {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    min-height: 60vh;
+    position: relative;
+  }
+
+  .hero-empty {
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  .hero-empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.3;
+  }
+
+  .hero-empty-text {
+    font-size: 15px;
+    font-weight: 400;
+    letter-spacing: -0.2px;
+  }
+
+  .hero-empty-hint {
+    font-size: 12px;
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    opacity: 0.6;
+  }
+
+  .hero-image-container {
+    position: relative;
+    max-width: 90%;
+    max-height: 70vh;
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .hero-image {
+    max-width: 100%;
+    max-height: 70vh;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    object-fit: contain;
+    cursor: zoom-in;
+  }
+
+  .hero-image.zoomed {
+    cursor: zoom-out;
+    max-width: 95vw;
+    max-height: 95vh;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    border-radius: var(--radius-md);
+  }
+
+  .hero-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .hero-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .hero-meta {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .meta-tag {
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-secondary);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  /* Gallery strip */
+  .gallery {
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    padding: 16px 32px;
+  }
+
+  .gallery-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .gallery-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .gallery-count {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+  }
+
+  .gallery-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scroll-behavior: smooth;
+  }
+
+  .gallery-strip::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .gallery-strip::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .gallery-strip::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+  }
+
+  .thumb {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: var(--transition);
+    position: relative;
+  }
+
+  .thumb:hover {
+    border-color: var(--border);
+    transform: translateY(-2px);
+  }
+
+  .thumb.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+
+  .thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .thumb-new {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  /* Keyboard hint */
+  .keyboard-hint {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    display: flex;
+    gap: 6px;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+  }
+
+  .keyboard-hint:hover { opacity: 0.8; }
+
+  .key {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+  }
+
+  /* Toast notification */
+  .toast {
+    position: fixed;
+    top: 80px;
+    right: 32px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 20px;
+    font-size: 13px;
+    color: var(--text-primary);
+    box-shadow: var(--shadow-lg);
+    transform: translateX(120%);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .toast.visible {
+    transform: translateX(0);
+  }
+
+  .toast-icon {
+    color: var(--success);
+    font-size: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">W2</div>
+      <div>
+        <div class="header-title">Wan2AI Gallery</div>
+        <div class="header-subtitle" id="model-info">waiting for generation...</div>
+      </div>
+    </div>
+    <div class="status">
+      <div class="status-dot waiting" id="status-dot"></div>
+      <span id="status-text">watching</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="hero" id="hero">
+      <div class="hero-empty" id="hero-empty">
+        <div class="hero-empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        </div>
+        <div class="hero-empty-text">Your generated images will appear here</div>
+        <div class="hero-empty-hint">run a generation in your terminal to begin</div>
+      </div>
+      <div class="hero-image-container" id="hero-image-container" style="display:none">
+        <img class="hero-image" id="hero-image" onclick="toggleZoom(this)" />
+        <div class="hero-meta">
+          <span class="meta-tag" id="meta-filename"></span>
+          <span class="meta-tag" id="meta-dimensions"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="gallery" id="gallery-section" style="display:none">
+      <div class="gallery-header">
+        <span class="gallery-title">History</span>
+        <span class="gallery-count" id="gallery-count"></span>
+      </div>
+      <div class="gallery-strip" id="gallery-strip"></div>
+    </div>
+  </div>
+</div>
+
+<div class="hero-overlay" id="overlay" onclick="toggleZoom()"></div>
+
+<div class="toast" id="toast">
+  <span class="toast-icon">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+  </span>
+  <span id="toast-text">New image generated</span>
+</div>
+
+<div class="keyboard-hint">
+  <span class="key">&larr;</span>
+  <span class="key">&rarr;</span>
+  <span class="key">space</span>
+</div>
+
+<script>
+  let images = [];
+  let currentIndex = 0;
+  let toastTimeout;
+
+  async function fetchImages() {
+    try {
+      const res = await fetch('/api/images');
+      const data = await res.json();
+      const prevCount = images.length;
+      images = data;
+
+      if (images.length > 0) {
+        document.getElementById('hero-empty').style.display = 'none';
+        document.getElementById('hero-image-container').style.display = '';
+        document.getElementById('gallery-section').style.display = '';
+
+        if (images.length > prevCount && prevCount > 0) {
+          currentIndex = 0;
+          showToast('New image generated');
+        }
+
+        updateHero();
+        updateGallery();
+      }
+    } catch (e) {}
+  }
+
+  function updateHero() {
+    if (images.length === 0) return;
+    const img = images[currentIndex];
+    const heroImg = document.getElementById('hero-image');
+    heroImg.src = img.url;
+    document.getElementById('meta-filename').textContent = img.name.replace(/\.[^.]+$/, '').substring(0, 40);
+    document.getElementById('model-info').textContent = img.name.replace(/\.[^.]+$/, '').substring(0, 50);
+
+    heroImg.onload = () => {
+      document.getElementById('meta-dimensions').textContent = `${heroImg.naturalWidth} × ${heroImg.naturalHeight}`;
+    };
+
+    document.querySelectorAll('.thumb').forEach((t, i) => {
+      t.classList.toggle('active', i === currentIndex);
+    });
+  }
+
+  function updateGallery() {
+    const strip = document.getElementById('gallery-strip');
+    document.getElementById('gallery-count').textContent = `${images.length} image${images.length !== 1 ? 's' : ''}`;
+
+    strip.innerHTML = images.map((img, i) => `
+      <div class="thumb ${i === currentIndex ? 'active' : ''}" onclick="selectImage(${i})">
+        <img src="${img.url}" loading="lazy" />
+        ${i === 0 && images.length > 1 ? '<div class="thumb-new"></div>' : ''}
+      </div>
+    `).join('');
+  }
+
+  function selectImage(index) {
+    currentIndex = index;
+    updateHero();
+  }
+
+  function toggleZoom(el) {
+    const img = el || document.getElementById('hero-image');
+    const overlay = document.getElementById('overlay');
+    img.classList.toggle('zoomed');
+    overlay.classList.toggle('visible');
+  }
+
+  function showToast(text) {
+    const toast = document.getElementById('toast');
+    document.getElementById('toast-text').textContent = text;
+    toast.classList.add('visible');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => toast.classList.remove('visible'), 3000);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' && currentIndex > 0) selectImage(currentIndex - 1);
+    if (e.key === 'ArrowRight' && currentIndex < images.length - 1) selectImage(currentIndex + 1);
+    if (e.key === ' ') { e.preventDefault(); toggleZoom(); }
+    if (e.key === 'Escape') {
+      document.getElementById('hero-image').classList.remove('zoomed');
+      document.getElementById('overlay').classList.remove('visible');
+    }
+  });
+
+  // Initial load + polling
+  fetchImages();
+  setInterval(fetchImages, 2000);
+
+  // SSE for instant updates
+  try {
+    const es = new EventSource('/api/watch');
+    es.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      if (data.type === 'update') fetchImages();
+    };
+  } catch (e) {}
+</script>
+</body>
+</html>

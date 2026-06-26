@@ -90,22 +90,41 @@ Different harnesses have different mechanisms for asking the user questions:
 
 ## Displaying Results
 
-For harnesses with a `Read` tool that supports images (MiMoCode, Codex, Claude Code): use `Read` on the generated file path. Do NOT use `--show`.
+### Browser Gallery (preferred for all harnesses)
 
-For terminal-based harnesses (Gemini CLI, OpenCode, Warp, Hermes Agent): use `--show` flag or `show` subcommand:
+Start a lightweight gallery server that shows images in the browser with live updates, history, and zoom. Ask the user once per session:
+
+> "Would you like a live gallery in your browser? Images will appear automatically as they're generated."
+
+If yes, start the server before the first generation:
 
 ```bash
-python scripts/wangp.py generate --model z_image --prompt "a red fox" --show
-python scripts/wangp.py show path/to/image.jpg
+scripts/viewer/start.sh --gallery-dir /tmp/wangp-gallery --open
 ```
 
-Terminal display methods (tried in order):
-1. `viu` — fast Rust terminal image viewer (recommended: `cargo install viu`)
-2. `chafa` — versatile terminal viewer (`apt install chafa` / `brew install chafa`)
-3. `timg` — terminal media viewer
-4. iTerm2 / Kitty inline image protocol (automatic)
-5. Sixel via `img2sixel`
-6. PIL fallback — opens in default OS image viewer
+This returns a JSON with `url` and `gallery_dir`. Use `gallery_dir` as the `--output-dir` for all subsequent generations:
+
+```bash
+python scripts/wangp.py generate --model z_image --prompt "a red fox" --output-dir /tmp/wangp-gallery
+```
+
+The browser auto-refreshes every 2 seconds and shows a toast notification for new images. Features:
+- Gallery history with thumbnails
+- Click to zoom, arrow keys to navigate
+- Image dimensions and filename display
+- Dark theme optimized for viewing generated images
+
+### Harness-Specific Fallbacks
+
+If the user declines the browser gallery:
+
+**MiMoCode / Codex / Claude Code** (has `Read` tool for images):
+- Use `Read` on the generated file path. The tool displays images inline in conversation.
+- Do NOT use `--show` or terminal viewers — `Read` handles display natively.
+
+**Terminal-based harnesses (Gemini CLI, OpenCode, Warp, Hermes Agent)**:
+- Use `--show` flag: `python scripts/wangp.py generate --model z_image --prompt "a red fox" --show`
+- Falls back through: viu → chafa → timg → iTerm2/Kitty → PIL show
 
 ## Workflow
 
