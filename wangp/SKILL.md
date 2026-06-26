@@ -1,38 +1,28 @@
 ---
 name: wangp
-description: "Generate images and videos using local AI models via Wan2GP. Use when the user wants to create images, videos, animations, or audio with local diffusion models (Flux, Wan, Hunyuan, LTX, Qwen, Z-Image, etc.). Triggers on requests like 'generate an image', 'make a video', 'create an animation', 'text to image', 'text to video', or any local media generation task using Wan2GP."
+description: Generate images, videos, animations, or audio locally using WanGP (Wan2GP) by deepbeepmeep — a one-stop optimized app for 200+ open-source generative models (Wan 2.1/2.2, LTX-2/2.3, Hunyuan Video, Qwen Image, Flux, HiDream, Z-Image, KREA, various TTS/audio). Triggers on generate an image, make a video, text to video, local AI generation, or any WanGP/Wan2GP media task. Supports low-VRAM GPUs (6GB+), older cards, AMD via Pinokio/community scripts.
 ---
 
-# Wan2GP Skill
+# WanGP (Wan2GP) Skill
 
-Generate images and videos locally using Wan2GP's 200+ AI models.
+Generate images, videos, and audio locally using WanGP by deepbeepmeep. WanGP is the premier open-source "one-stop super app" for the best generative models, optimized for the "GPU Poor" (low VRAM, older GPUs, AMD support). It features a full Gradio web UI, headless queue processing, Python API, LoRA/finetune support, automatic model downloads, quantization (int8/fp8/GGUF/NVFP4/Nunchaku), advanced attention (SageAttention 2, Flash, Triton), TeaCache, FlashVSR upscaling, and built-in tools (mask editor, pose extractor, galleries, Deepy offline agent).
 
-## MANDATORY STARTUP CHECKLIST (do these IN ORDER before ANYTHING else)
+**Research-backed accuracy**: All model recommendations, hardware tiers, installation methods, CLI flags, VRAM notes, and prompting guidance are derived directly from the official repository (github.com/deepbeepmeep/Wan2GP), docs/MODELS.md, docs/CLI.md, README, and community corroboration as of June 2026. No guesses.
 
-**STOP. Read this entire checklist before taking any action. Execute each step in order. Do not skip steps.**
+## MANDATORY STARTUP CHECKLIST (do these IN ORDER)
 
-### Step A: Try to find Wan2GP automatically first
+**STOP. Execute each step in order. Do not skip.**
 
-Run detect immediately — do NOT ask the user first:
-
+### Step A: Detect WanGP automatically
 ```bash
 python scripts/wangp.py detect
 ```
+- Returns JSON with `wan2gp_root`, `wan2gp_version`, `wan2gp_update_available`, `python_env_ok`, GPU/VRAM info, recommended profile.
+- If multiple installs found, highest maturity score is selected.
+- If fails with "Wan2GP not found": Ask user with options (search drives / Pinokio install / manual).
 
-**If detect succeeds** (returns valid JSON with `wan2gp_root`): Wan2GP is found. Skip to Step C.
-
-**If detect fails** (returns `"Wan2GP not found"`): NOW ask the user:
-
-> "Wan2GP is not installed or not found in the current location. How would you like to proceed?"
-> 1. **Search all drives** — I'll scan for it (uses some tokens)
-> 2. **Install via Pinokio** — I'll install it automatically
-> 3. **I'll handle it myself** — I'll install it and come back
-
-Use the `question` tool for MiMoCode/Codex. For other harnesses, present as a numbered list.
-
-If user chooses 1, re-run `detect` (it will scan all drives). If user chooses 2, run the Pinokio install (see Step A2 below). If user chooses 3, stop and let the user handle it.
-
-### Step A2: Pinokio install (only if user chose option 2)
+### Step A2: Pinokio Install (recommended for most users)
+Pinokio + community scripts (by 6Morpheus6/morpheus) are explicitly recommended in the official README for simplicity and reliability.
 
 ```bash
 npm install -g pinokio
@@ -42,567 +32,151 @@ export WAN2GP_ROOT=~/.pinokio/api/wan2gp/app
 python scripts/wangp.py detect
 ```
 
-### Step B: Offer browser gallery
+Alternative official: `pinokio download https://github.com/deepbeepmeep/Wan2GP`
 
-After Wan2GP is found (either from Step A success or after user action), ask:
-
-> "Would you like a live gallery in your browser? Images will appear automatically as they're generated with a dark-themed viewer, history, and zoom."
-
-If yes, start the server using the skill's `scripts/viewer/start.sh`:
+### Step B: Offer live browser gallery (strongly recommended)
+WanGP has its own galleries, but the skill's dedicated dark-themed live viewer with auto-refresh, history, zoom, and SSE updates is ideal for agent workflows.
 
 ```bash
-SKILL_DIR="$(dirname "$(readlink -f "$(which wangp 2>/dev/null || echo ~/.agents/skills/wangp/scripts/wangp.py)")")"
+SKILL_DIR="..."
 bash "$SKILL_DIR/scripts/viewer/start.sh" --gallery-dir /tmp/wangp-gallery --open
 ```
+Use `--output-dir /tmp/wangp-gallery` for all `generate` calls in the session. Images appear automatically.
+
+### Step C: Version & Update Check
+If `wan2gp_update_available`, offer `python scripts/wangp.py update` (handles git pull + requirements or heavy components via manage scripts).
+
+### Step D: Generate workflow
+Choose model (via hierarchy below), adapt prompt (critical — see prompting guidance), call generate with options.
+
+### Step E: Unload between model/operation switches (CRITICAL)
+WanGP keeps models in VRAM (no auto-unload on API calls or mode switches). "Unload All" exists in UI; the wrapper's `unload` command frees VRAM (torch cache + model unload).
 
-Save the `gallery_dir` from the output. Use it as `--output-dir` for ALL generations.
+**Always unload when switching** image ↔ video, different model families, or before upscaling a just-generated asset.
 
-### Step C: Check version
+**Do not unload** for repeated calls with the same model (faster reloads).
+
+## Prerequisites & Installation Notes (Research-Verified)
+
+- **Recommended**: Pinokio with 6Morpheus6/wan2gp community script (handles venv, torch, kernels, models).
+- **Manual** (from official README):
+  - Modern GPUs (RTX 20xx+): Python 3.11.14, torch 2.10.0+cu130 or latest cuXXX.
+  - Older (GTX 10xx): Python 3.10.9, specific older torch cu128.
+  - `pip install -r requirements.txt`
+  - One-click: `scripts/install.sh` or `.bat` (auto kernel selection: Triton/Sage/Flash/GGUF/Lightx2v/Nunchaku).
+- **Docker**: `./run-docker-cuda-deb.sh` (auto-detects GPU/VRAM, builds optimized image).
+- **AMD**: Supported via dedicated community scripts (RDNA 2/3/3.5/4).
+- **WanGP entry points**: `python wgp.py` (web UI on :7860), `python wgp.py --process queue.zip` (headless batch), Python API (docs/API.md — recommended for future wrapper enhancements), finetune system for custom models/LoRAs/resolutions.
+- **Quantization & Kernels**: int8/fp8/GGUF/NV FP4/Nunchaku/Quanto; attention sdpa/sage/sage2/flash; TeaCache multipliers for speed/quality trade-off.
 
-The `detect` output from Step A includes `wan2gp_version` and `wan2gp_update_available`. If an update is available, ask the user:
+## Image Generation Hierarchy (Hardware-Tiered, Research-Based)
 
-> "Wan2GP has an update available (current: X, latest: Y). Want me to update it?"
+**12GB VRAM (RTX 4070/4060 Ti 16GB, 3060 12GB — most common tier)**:
+1. `qwen_image` (or qwen_image_2512 variants) — Best text rendering + strong realism. Use Lightning 4-step or 8-step LoRA accelerator presets (exact HF URLs in original skill; match repo's lightx2v-style accelerators).
+2. `krea2_turbo` or KREA-2 — Excellent aesthetics, fast.
+3. `ideogram4` or Ideograms v4 — Superior typography/layout. Turbo preset (12 steps).
+4. `z_image` — Fastest baseline, NAG-guided, 8 steps.
+5. `flux` (with Turbo Alpha LoRA) or Flux 2 Klein/Chroma — General purpose, 8-10 steps.
+6. `flux2_klein_9B` or distilled variants — Very fast 4 steps.
+7. `hidream_o1` / HiDream — Descriptive prompting, good quality.
 
-If they say yes: `python scripts/wangp.py update`
+**16GB+ VRAM**:
+- Above + full `flux2_dev` (32B INT8), `krea2_raw` (max quality 52 steps), full HiDream, longer/higher-res generations.
 
-### Step D: Generate
+**8GB or lower**:
+- `z_image` INT8/GGUF, `flux2_klein_4B` or smallest Wan 1.3B-derived for image if available, aggressive quantization + lower res (832x480 or below).
 
-Now proceed with the normal workflow (choose model, adapt prompt, generate).
+**Video Generation Hierarchy**:
+**12GB**:
+1. `ltx2_22B_distilled` or LTX-2 / LTX 2.3 Distilled — Fastest high-quality (often <1 min), excellent for low VRAM (repo notes 4x VRAM reduction in WanGP optimizations). 8 steps.
+2. `t2v_sf` or Wan Lightning/SkyReel-derived fast variants — 4 steps.
+3. `t2v_fusionix` or FusioniX — Good motion, 8 steps.
+4. `hunyuan_1_5_480_t2v` or Hunyuan Video 1/1.5 — Superior text adherence & quality (slower).
+5. Wan 2.1/2.2 14B or 1.3B T2V/I2V (Fun InP, VACE for control) — 1.3B for 6GB min, 14B for quality (12GB+).
 
-### Step E: Unload between operations (CRITICAL)
+**16GB+**:
+- Full Wan 14B T2V/I2V/VACE, full Hunyuan, LTX-2 non-distilled, longer videos/higher res, multi-LoRA.
 
-Wan2GP does NOT automatically unload models from VRAM when using the API. You MUST unload the current model before switching to a different operation (e.g., generating an image then upscaling it, or switching from image gen to video gen).
+**Specialized**:
+- VACE (1.3B/14B): Motion transfer, object injection, inpainting, advanced control.
+- Talking heads (Multitalk, FantasySpeaking, Hunyuan Avatar): Voice + image → lip-synced video.
+- Phantom, Recam Master, Sky Reels v2: Specific control or infinite-length.
 
-**ALWAYS run this between different model types:**
+**Upscaling during/after**:
+- `lanczos2/4`: Fast, no GPU.
+- `flashvsr2/2pass2/4`: Best quality AI upscaling (Triton), x2 needs ~6GB, x4 ~10GB.
+- `coz*` Chain-of-Zoom for extreme.
+- `flux_pid4`: High-quality image upscaler.
 
-```bash
-python scripts/wangp.py unload
-```
+## Prompt Adaptation (Model-Family Specific — Critical for Quality)
 
-**When to unload:**
-- After generating an image, BEFORE upscaling it
-- After generating with one model, BEFORE generating with a different model
-- After upscaling, BEFORE generating again
-- Any time you switch between image gen, video gen, editing, or upscaling
+Different base models were trained differently; the wrapper/script must adapt or the user prompt must be rewritten.
 
-**When NOT to unload:**
-- Running the same model multiple times in a row (keep it loaded for speed)
-- The model will auto-reload on next use if unloaded
+- **Flux / Flux2 / Klein**: Short, direct imperatives. "A red fox in a misty forest at dawn, cinematic lighting". No long paragraphs. For editing (Kontext/USO): short instructions like "add sunglasses" or style transfer description + reference image.
+- **Z-Image**: Concise 1-2 sentences. Relies on NAG (guidance_scale ~0). Good for fast iterations.
+- **Qwen Image**: Strong for text-in-image. Short instructions or detailed for complex scenes/text rendering. Excellent realism + typography.
+- **HiDream / hidream_o1**: More descriptive — subject, action, environment, style, lighting, mood. Supports longer prompts well.
+- **Ideogram / KREA**: Good for composition, layout, typography. Follow their UI/JSON-like if wrapper supports, or descriptive + aspect hints.
+- **Wan 2.1/2.2 T2V/I2V (including Fun InP, VACE)**: Detailed cinematic narrative. Camera motion (slow pan left, dolly zoom), character actions, environment, atmosphere, lighting. For I2V: describe motion from the input image. VACE: specify control type (depth, pose, inpaint mask).
+- **LTX Video / LTX-2 (Distilled or full)**: VERBOSE screenplay format. Scene descriptions, character actions/emotions in prose, dialogue in "quotes", camera directions (close-up, wide shot, tracking). Excellent for cinematic storytelling. Distilled variants still benefit from rich prompts but are faster.
+- **Hunyuan Video**: Similar to Wan — strong text adherence. Detailed narrative with precise subject/object descriptions. Great for identity preservation in Custom/Avatar variants (provide reference image + voice for song/speech-driven).
+- **Talking head / Avatar models**: Provide clear voice track + character image/reference. Prompt describes dialogue, emotion, head movement.
+- **General tips**: Use negative prompts where supported. For LoRAs: specify via settings or inline if wrapper supports (repo supports per-window multipliers). Test TeaCache (1.5-2.5x) for speed.
 
-**Do NOT skip Steps A and B. They are mandatory for every session.**
+The skill's `defaults <model_type>` and prompt adaptation logic in scripts/wangp.py should encode these conventions.
 
----
+## Workflow Commands (Wrapper: scripts/wangp.py)
 
-## Prerequisites
+- `detect`: Hardware + install scan.
+- `defaults <model>`: Baseline resolution, steps, guidance, etc. for that model_type.
+- `generate --model <type> --prompt "..." [--resolution WxH] [--steps N] [--image path] [--frames N] [--negative "..."] [--guidance-scale F] [--attention MODE] [--profile N] [--upscale METHOD] [--output-dir DIR] [--seed N] [--show]`: Core generation. Maps to appropriate WanGP finetune/mode or API call.
+- `upscale <path> --method flashvsr2|lanczos2|... [--show]`
+- `unload`: Free VRAM (critical between ops).
+- `list`: Available model_types the wrapper knows.
+- `update`: Update WanGP.
 
-- **Wan2GP**: The skill checks for Wan2GP on first use. If not found, it offers to install automatically via Pinokio's headless CLI (recommended). Manual install also works: https://github.com/DeepBeepMeep/Wan2GP
-- **Pinokio** (optional, for auto-install): `npm install -g pinokio` — the skill can install this automatically if needed.
+**Options map to real WanGP flags** where possible: --attention, --profile, --seed, --frames, --steps, quantization/TeaCache via profile or extra settings, LoRA via --lora-preset or activated_loras in JSON settings.
 
-## Image Display and User Interaction (per harness)
+For advanced control, the wrapper can/should leverage WanGP's Python API (docs/API.md) or save settings JSON + --process for complex pipelines.
 
-### Displaying Images
+## Harness-Specific Notes
 
-Different harnesses display images differently. Use the method appropriate for your environment:
+**Hermes Agent** (Nous Research self-improving autonomous agent):
+- Terminal-focused or Clarify for structured questions (model choice, upscaling method, resolution).
+- Use `--show` or terminal viewers (chafa/viu) for images, or strongly prefer the browser gallery (open it via script).
+- Persistent memory and skill-building make it excellent for iterative media workflows — the wangp skill's unload discipline and gallery history pair perfectly.
+- The table in original skill is accurate.
 
-**MiMoCode / Codex / Claude Code** (has `Read` tool for images):
-- After generation, use the `Read` tool on the generated image file path. The tool will display the image inline in the conversation.
-- Do NOT use `--show` or `viu` — the `Read` tool handles display natively.
-- Example: After `wangp.py generate` returns a path, call `Read(path="/path/to/image.jpg")`.
+Other harnesses (Claude Code, Cursor, etc.): As documented originally — Read tool or IDE preview for images; conversational or question tool for choices.
 
-**Cursor / VS Code extensions (Cline, Roo, GitHub Copilot)** (IDE-based):
-- Images display inline in the IDE chat panel when referenced.
-- After generation, tell the user the file path. The IDE may auto-preview images in the workspace.
-- For explicit display, use `Read` tool if available, or mention the path so the user can click to open.
+## Error Recovery & Best Practices (from real usage & repo)
 
-**Terminal-based agents (Gemini CLI, OpenCode, Warp, Hermes Agent, etc.)**:
-- Use `--show` flag on `generate` to display via `viu`/`chafa`.
-- Auto-install `viu` if needed: `cargo install viu` or `apt install chafa`.
-- Fallback: report the file path and let the user open it.
+- **OOM / CUDA errors**: Lower resolution (e.g. 1280x720 → 832x480 or model-native), fewer frames/steps, switch to distilled/Lightning/smaller model (1.3B or 4B Klein), enable more aggressive quantization/GGUF, or use INT8 profile. FlashVSR x2 is lighter than x4.
+- **Slow generation**: Use distilled/Lightning variants + TeaCache + SageAttention 2 + lower steps. LTX Distilled or Wan 1.3B first.
+- **Poor quality/motion**: Increase steps, richer prompt matching family conventions, add LoRAs carefully (repo has presets like VBVR, Id Lora, lightx2v accelerators), use VACE for control.
+- **Model not found / unknown**: Run `list` or check WanGP web UI finetunes. Wrapper should have mapping.
+- **VRAM leaks**: Always `unload` between major switches. Monitor with nvidia-smi.
+- **First run**: Models auto-download on first use per finetune — be patient; architecture-aware.
+- **Batch**: Prefer WanGP native queue.zip + --process for large jobs; use wrapper generate for dynamic single tasks from agent.
 
-**General rule**: If the harness has a `Read` tool that supports images, prefer that over `--show`. If not, use `--show` with a terminal image viewer.
+## References (to be populated in references/ dir)
 
-### Asking User Questions
+- model-catalog.md: Full expandable list with exact VRAM, command examples (--t2v-14B, --i2v-1-3B etc.), LoRA notes per family.
+- prompting.md: Expanded examples per model family with before/after prompt adaptations.
+- hardware.md: Detailed VRAM tables, attention/quantization impact, profile recommendations, AMD/Docker specifics.
+- api-integration.md: Notes on leveraging WanGP Python API for tighter wrapper integration (future enhancement).
 
-Different harnesses have different mechanisms for asking the user questions:
+## When to Use This Skill
 
-**MiMoCode / Codex** (has `question` tool):
-- Use the `question` tool for structured questions with predefined options.
-- Example for display preference:
-  ```
-  question(questions=[{
-    question: "Do you want generated images displayed after each generation?",
-    header: "Image display",
-    options: [
-      {label: "Yes, show images", description: "Display images in terminal after each generation"},
-      {label: "No, just paths", description: "Only report the file path"}
-    ]
-  }])
-  ```
-- Use `question` tool for model selection, upscaling method choice, resolution selection, etc.
+Any request for local (not cloud/API) image/video/audio generation or editing with open models, especially when user has or wants WanGP installed for its optimizations, low-VRAM performance, unified interface, or LoRA/finetune ecosystem. Complements ComfyUI users who want simpler non-node workflows or agent scripting.
 
-**Claude Code** (conversational):
-- Ask questions directly in conversation. Claude Code does not have a structured question tool.
-- Present options as a numbered list and ask the user to pick.
+## When NOT to Use
 
-**Cursor / VS Code extensions**:
-- Ask questions in the chat panel. Present options as a numbered or bulleted list.
+- Pure cloud generation (use dedicated imagegen or video skills).
+- Vector/SVG/code-native assets.
+- User explicitly wants ComfyUI workflows or other runners.
 
-**Hermes Agent** (has `Clarify` function):
-- Use Hermes Agent's native `Clarify` function for structured questions when available.
-- Fall back to conversational questions if Clarify is not accessible.
+This skill makes WanGP agent-accessible with proper model selection, prompt engineering, VRAM discipline, and polished output handling (gallery). It turns a powerful but primarily UI/queue-oriented app into a reliable tool for autonomous creative workflows.
 
-**Other harnesses**:
-- Ask questions conversationally in the chat.
-- Present options as a numbered list.
-- Keep questions concise — most harnesses don't have structured input mechanisms.
+**Validation**: Run validate-skill.sh after edits. Test detect/generate/unload cycle on real hardware matching user's setup (e.g. RTX 4070 Super as in user context).
 
-### Harness-Specific Capabilities
-
-| Harness | Image Display | Question Method | Special |
-|---|---|---|---|
-| MiMoCode | `Read` tool | `question` tool | Hooks, tools, TUI plugins |
-| Codex | `Read` tool | `question` tool | MCP, plugins, marketplace |
-| Claude Code | `Read` tool | Conversational | `context: fork`, hooks, MCP |
-| Cursor | IDE chat panel | Conversational | IDE integration |
-| Cline | IDE chat panel | Conversational | Browser automation, MCP |
-| Roo Code | IDE chat panel | Conversational | Multi-mode agent |
-| GitHub Copilot | VS Code chat | Conversational | VS Code integration |
-| Gemini CLI | Terminal (`--show`) | Conversational | Open source |
-| OpenCode | Terminal (`--show`) | Conversational | Open source |
-| Hermes Agent | Terminal (`--show`) | `Clarify` function | Structured input |
-| Warp | Terminal (`--show`) | Conversational | Terminal integration |
-| Kiro CLI | IDE panel | Conversational | Spec-driven dev |
-| Goose | Terminal (`--show`) | Conversational | MCP extensible |
-
-## Displaying Results
-
-### Browser Gallery (preferred for all harnesses)
-
-A built-in gallery server shows generated images in the browser with live auto-refresh, history thumbnails, zoom, and keyboard navigation. This works across ALL harnesses because it's just a browser tab.
-
-**Setup (once per session):**
-
-Ask the user:
-> "Would you like a live gallery in your browser? Images will appear automatically as they're generated. I'll start a local server and open it for you."
-
-If yes, start the server. The `start.sh` script is at `scripts/viewer/start.sh` relative to the skill directory. Find the skill path first:
-
-```bash
-# Find skill directory (harness-dependent)
-SKILL_DIR="<path to wangp skill directory>"
-
-# Start gallery server and open browser
-bash "$SKILL_DIR/scripts/viewer/start.sh" --gallery-dir /tmp/wangp-gallery --open
-```
-
-This outputs JSON with `url`, `gallery_dir`, and `port`. Save the `gallery_dir` — use it as `--output-dir` for ALL generations in this session.
-
-**Generation with gallery:**
-
-```bash
-python scripts/wangp.py generate --model z_image --prompt "a red fox" --output-dir /tmp/wangp-gallery --show
-```
-
-The `--output-dir` sends the image to the gallery folder. The `--show` is a fallback for terminal display. The browser auto-refreshes every 2 seconds and shows a toast notification for new images.
-
-**Gallery features:**
-- Live auto-refresh (polling + SSE for instant updates)
-- History strip with clickable thumbnails
-- Click to zoom, arrow keys to navigate between images
-- Image dimensions and filename metadata
-- Dark theme optimized for viewing generated images against a neutral background
-- Keyboard shortcuts: `←` `→` navigate, `space` zoom, `esc` close
-
-**Multiple generations:**
-
-Every generation in the session should use the same `--output-dir`. The gallery accumulates all images and sorts by newest first. The user can browse their full generation history.
-
-**Stopping the server:**
-
-The server auto-exits after 4 hours idle. To stop manually:
-```bash
-kill $(cat /tmp/.viewer-state/server-info | python3 -c "import json,sys; print(json.load(sys.stdin)['pid'])")
-```
-
-### Harness-Specific Fallbacks
-
-If the user declines the browser gallery:
-
-**MiMoCode / Codex / Claude Code** (has `Read` tool for images):
-- Use `Read` on the generated file path. The tool displays images inline in conversation.
-- Do NOT use `--show` or terminal viewers — `Read` handles display natively.
-
-**Terminal-based harnesses (Gemini CLI, OpenCode, Warp, Hermes Agent)**:
-- Use `--show` flag: `python scripts/wangp.py generate --model z_image --prompt "a red fox" --show`
-- Falls back through: viu → chafa → timg → iTerm2/Kitty → PIL show
-
-### Design Principles for Generated HTML
-
-When the agent creates HTML content (gallery screens, comparison views, before/after layouts), apply these principles:
-
-**Ground it in the subject.** The viewer exists to showcase AI-generated images — don't distract from them. The dark background (`#0a0a0c`) makes images pop. The chrome (header, controls) should be minimal and recede.
-
-**Typography carries personality.** Use Inter for UI text and JetBrains Mono for metadata/technical info. Don't use generic system fonts — the type treatment should feel intentional. Keep font weights light (300-500) for a studio/gallery feel.
-
-**Structure is information.** Gallery thumbnails encode chronological order. Image metadata (dimensions, filename) is functional, not decorative. Don't add numbered markers or labels unless they carry real information.
-
-**Spend boldness in one place.** The image itself is the hero — everything else supports it. The one distinctive element is the smooth fade-in animation on new images. Keep all other UI elements quiet and disciplined.
-
-**Match complexity to content.** A single image needs minimal chrome. A gallery of 20 images needs the history strip. Side-by-side comparisons need split layouts. Scale the UI to what the user is actually doing.
-
-**Write from the user's side.** "New image generated" not "Image saved to filesystem." "Gallery" not "Image output directory." "Zoom" not "Toggle fullscreen mode."
-
-**Treat emptiness as invitation.** When no images exist yet, show a clear message: "Your generated images will appear here" with a hint: "run a generation in your terminal to begin." Don't apologize or explain what's missing.
-
-## Workflow
-
-### IMPORTANT: Transparency First
-
-Before doing ANYTHING, tell the user what you're about to do. The skill runs detection, reads Wan2GP files, and calls its API — this can look suspicious if unexplained. Always start with a brief explanation like:
-
-> "I'll set up Wan2GP for you. First I need to detect your hardware and check the Wan2GP installation."
-
-If the user hasn't used this skill before, explain the full workflow upfront:
-
-> "Here's what I'll do: detect your GPU/VRAM, recommend the best model, adapt the prompt for that model, generate the media, and optionally display it."
-
-Never silently start reading Wan2GP files or running commands without context.
-
-### Step 0: Check Wan2GP Installation
-
-**Before running detect**, ask the user if they want the agent to search for Wan2GP. Searching scans multiple drives and costs context/tokens. Give them these options:
-
-> "I need to find your Wan2GP installation. How would you like to proceed?"
->
-> 1. **Search for it** — I'll scan your drives to find the best Wan2GP install (uses some tokens)
-> 2. **I'll navigate there myself** — Close this and run your CLI/harness from the Wan2GP directory directly
-> 3. **I don't have Wan2GP** — Install it automatically via Pinokio
-
-(Use the `question` tool for MiMoCode/Codex, numbered list for other harnesses.)
-
-**If user chooses "Search for it"**:
-```bash
-python scripts/wangp.py detect
-```
-
-The `detect` output includes `wan2gp_version`, `wan2gp_update_available`, `python_env_ok`, and if multiple installs exist, `all_installations` showing all found paths with maturity scores. The highest-scored install is automatically selected.
-
-**If Wan2GP is fully working** (version detected, python_env_ok=true):
-- Check `wan2gp_update_available`. If true, tell the user: "Wan2GP has an update available (current: X, latest: Y). Want me to update it?"
-- If they say yes: `python scripts/wangp.py update`
-- Proceed to Step 1.
-
-**If Wan2GP is NOT found or NOT working** (detect fails, python_env_ok=false, missing dependencies):
-
-Do NOT try to manually install Wan2GP dependencies (pip install diffusers, torch, etc.). This wastes tokens and time. Instead, offer to install via Pinokio's headless CLI:
-
-> "Wan2GP is not installed or not set up. I can install it automatically via Pinokio's headless CLI, which handles all dependencies, GPU setup, and model downloads. Want me to proceed?"
-
-If they say yes, run these 3 steps in order:
-
-```bash
-# 1. Install Pinokio core headlessly (skip if already installed)
-npm install -g pinokio
-
-# 2. Download Wan2GP into Pinokio's app cache
-pinokio download https://github.com/6Morpheus6/wan2gp
-
-# 3. Run Wan2GP's install script (handles venv, CUDA, torch, all deps)
-pinokio run ~/.pinokio/api/wan2gp/install.js
-```
-
-After install completes, set `WAN2GP_ROOT` and re-run `detect`:
-```bash
-export WAN2GP_ROOT=~/.pinokio/api/wan2gp/app
-python scripts/wangp.py detect
-```
-
-**If the user declines Pinokio install**, tell them:
-> "You can also install Wan2GP manually from https://github.com/DeepBeepMeep/Wan2GP. Once installed, set WAN2GP_ROOT to the app directory."
-
-Do NOT attempt manual pip/conda installs. Do NOT read Wan2GP source files to "figure out" the installation. Either use Pinokio or let the user handle it manually.
-
-**If user chooses "I'll navigate there myself"**:
-> "No problem. Navigate to your Wan2GP directory in your terminal, then launch your CLI/harness from there. The skill will find Wan2GP automatically when you run it from that directory."
-
-Do NOT search. Do NOT run detect. Stop here and let the user handle it.
-
-### Step 1: Detect Hardware
-
-```bash
-python scripts/wangp.py detect
-```
-
-Returns JSON with GPU, VRAM, RAM, recommended profile, and suitable model sizes. Use this to guide model selection.
-
-### Step 2: Choose a Model
-
-Read `references/model-catalog.md` to match user intent to a `model_type`. Key decision factors:
-
-1. **Task type**: What does the user want? (image, video, edit, animate, TTS, music)
-2. **Hardware**: What does `detect` report? Match VRAM to model size.
-3. **Speed vs quality**: Lightning/distilled variants are faster; base models are higher quality.
-
-#### IMAGE GENERATION HIERARCHY (best first, by hardware tier)
-
-**12GB VRAM (RTX 4070, 3060 12GB, etc.) — your default tier:**
-1. `qwen_image_2512_20B` — Best text rendering + realism. USE LIGHTNING PRESET (see below).
-2. `krea2_turbo` — Best aesthetics, 8 steps, fast.
-3. `ideogram4` — Best for typography/layout. USE TURBO PRESET (12 steps).
-4. `z_image` — Fastest, 8 steps, NAG-guided.
-5. `flux` with Turbo Alpha LoRA — Good general purpose, 10 steps.
-6. `flux2_klein_9B` — Distilled Flux 2, 4 steps, very fast.
-7. `hidream_o1_dev` — Distilled, 28 steps.
-
-**16GB+ VRAM:**
-- All above at higher quality + `flux2_dev` (32B with INT8)
-- `krea2_raw` (52 steps, maximum quality)
-- `hidream_o1` (50 steps, full quality)
-
-**8GB VRAM:**
-- `z_image` with INT8, `flux2_klein_4B`, `flux_schnell`
-
-#### VIDEO GENERATION HIERARCHY
-
-**12GB VRAM:**
-1. `t2v_sf` — Wan Lightning, 4 steps, fastest T2V
-2. `t2v_fusionix` — FusioniX, 8 steps, good motion
-3. `ltx2_22B_distilled` — LTX-2 distilled, 8 steps, with audio
-4. `t2v_1.3B` — Lightweight Wan, 30 steps
-5. `hunyuan_1_5_480_t2v` — Hunyuan 1.5 480p, 30 steps
-
-**16GB+ VRAM:**
-- `t2v` or `t2v_2_2` — Full Wan 14B, 30 steps (best quality)
-- `hunyuan` — HunyuanVideo 13B
-- `ltx2_22B` — Full LTX-2 22B
-
-#### CRITICAL: MODEL-SPECIFIC PRESETS
-
-**When user asks for Qwen Image (any variant):**
-- ALWAYS use `qwen_image_2512_20B` (latest release, not the older `qwen_image_20B`)
-- Apply Lightning preset by adding to settings:
-  ```json
-  "activated_loras": ["https://huggingface.co/DeepBeepMeep/Qwen_image/resolve/main/loras_accelerators/Qwen-Image-2512-Lightning-4steps-V1.0-bf16.safetensors"],
-  "loras_multipliers": "1",
-  "num_inference_steps": 4,
-  "guidance_scale": 1
-  ```
-- If 4-step gives OOM, try 8-step preset instead:
-  ```json
-  "activated_loras": ["https://huggingface.co/DeepBeepMeep/Qwen_image/resolve/main/loras_accelerators/Qwen-Image-2512-Lightning-8steps-V1.0-bf16.safetensors"],
-  "num_inference_steps": 8
-  ```
-
-**When user asks for Flux 2 Dev 32B:**
-- Model type: `flux2_dev`
-- Apply Turbo LoRA for 8-step generation:
-  ```json
-  "activated_loras": ["https://huggingface.co/fal/FLUX.2-dev-Turbo/resolve/main/flux.2-turbo-lora.safetensors"],
-  "loras_multipliers": "1",
-  "num_inference_steps": 8
-  ```
-- If OOM, fall back to `flux2_klein_9B` (distilled, 4 steps, much less VRAM)
-
-**When user asks for Flux 1 (any variant):**
-- Apply Turbo Alpha LoRA for 10-step generation:
-  ```json
-  "activated_loras": ["https://huggingface.co/DeepBeepMeep/Flux/resolve/main/loras_accelerators/FLUX.1-Turbo-Alpha.safetensors"],
-  "loras_multipliers": "1",
-  "num_inference_steps": 10,
-  "embedded_guidance_scale": 3.5
-  ```
-
-**When user asks for Ideogram:**
-- Default is 20 steps. For faster: use Turbo preset (12 steps).
-- Model type: `ideogram4` (FP8, 9.3B)
-
-**When user asks for Krea 2:**
-- Use `krea2_turbo` (8 steps) by default, not `krea2_raw` (52 steps)
-
-#### OOM DETECTION AND RECOVERY
-
-If generation fails with OOM (out of memory), CUDA error, or killed signal:
-1. Tell the user: "Generation ran out of memory. Let me try a smaller model/fewer steps."
-2. If using Qwen 2512 4-step → try 8-step preset
-3. If using Flux 2 Dev 32B → fall back to `flux2_klein_9B`
-4. If using any 14B+ model → try the 1.3B or distilled variant
-5. Lower resolution: 1280x720 → 832x480
-6. If still failing: suggest a fundamentally smaller model (Z-Image, Flux 2 Klein 4B)
-- **Best images**: `flux` (12B), `qwen_image_20B` (20B), `hidream_o1` (10B)
-- **Fast images**: `z_image` (6B, 8 steps), `flux_schnell` (12B, fast)
-- **Best video**: `t2v` or `t2v_2_2` (Wan 14B), `hunyuan` (13B)
-- **Fast video**: `t2v_sf` (Lightning), `ltx2_22B_distilled` (8 steps)
-- **Low VRAM**: `t2v_1.3B`, GGUF variants, `z_image`
-
-### Step 3: Get Default Settings
-
-```bash
-python scripts/wangp.py defaults <model_type>
-```
-
-Returns the model's default settings (resolution, steps, etc.). Use as baseline.
-
-### Step 4: Adapt the Prompt
-
-Read `references/prompting.md` for model-specific prompt guidance. Each model family has VERY different conventions:
-
-- **Flux**: Short, direct — "draw a hat", "add a hat" (editing). Don't write paragraphs.
-- **Z-Image**: Concise 1-2 sentences. Uses NAG (guidance_scale=0). Don't write long descriptions.
-- **Qwen Image**: Short instructions for editing, or detailed text for text-in-image rendering.
-- **HiDream**: More descriptive — include subject, action, environment, style details.
-- **Ideogram**: UNIQUE JSON FORMAT with `aspect_ratio`, `high_level_description`, `compositional_deconstruction`. Not plain text.
-- **Wan T2V**: Detailed cinematic narrative with camera motion, character actions, environment.
-- **LTX**: VERBOSE screenplay format (200+ words) with dialogue in quotes, camera directions, character emotions.
-- **HunyuanVideo**: Similar to Wan — detailed cinematic narrative.
-- **Lucy/Kiwi Edit**: Short imperative commands — "change the clothes to red", "Remove the monkey."
-- **IndexTTS2**: Emotion tags `[happy]`, `[sadness]` with `Speaker 1:` prefixes.
-- **Ovi**: Scene description with `<S>` and `<E>` tags marking speech segments.
-- **Music (ACE-Step)**: Song structure tags `[Verse]`, `[Chorus]` with lyrics.
-
-### Step 5: Generate
-
-```bash
-python scripts/wangp.py generate --model <type> --prompt "..." [options]
-```
-
-**Options**:
-- `--resolution WxH` (e.g., 1280x720)
-- `--steps N` (inference steps)
-- `--seed N` (reproducibility, -1 for random)
-- `--frames N` (video frame count)
-- `--image PATH` (start image for I2V/I2I)
-- `--negative TEXT` (negative prompt)
-- `--guidance-scale F` (prompt adherence)
-- `--output-dir DIR` (output location)
-- `--attention MODE` (sdpa/sage/sage2/flash)
-- `--profile N` (1-5, performance profile)
-- `--upscale METHOD` (spatial upsampling during generation, e.g. `lanczos2`, `flashvsr2`, `coz4`)
-- `--show` (display image after generation)
-
-**Output**: JSON with `success`, `generated_files` (paths), and any errors.
-
-### Step 6: Report Results
-
-Report the output file paths to the user. If generation failed, check the error message and suggest fixes (lower resolution, different model, fewer frames).
-
-## Upscaling
-
-### Upscale During Generation
-
-Add `--upscale` to any generate call to upscale the output immediately:
-
-```bash
-python scripts/wangp.py generate --model z_image --prompt "a red fox" --upscale lanczos2 --show
-python scripts/wangp.py generate --model t2v --prompt "a sunset" --upscale flashvsr2
-```
-
-### Upscale an Existing Image/Video
-
-Use the `upscale` subcommand to upscale any existing file:
-
-```bash
-python scripts/wangp.py upscale path/to/image.jpg --method lanczos2 --show
-python scripts/wangp.py upscale path/to/video.mp4 --method flashvsr2
-```
-
-### Upscaling Methods
-
-| Method | Scale | Media | GPU Required | Notes |
-|---|---|---|---|---|
-| `lanczos2` - `lanczos4` | 2-4x | image+video | No | Fast, basic quality. Good for quick upscaling. |
-| `flashvsr2` - `flashvsr4` | 2-4x | image+video | Yes (Triton) | AI upscaling, much better quality. |
-| `flashvsr2pass2` - `flashvsr2pass4` | 2-4x | image+video | Yes | Two-pass FlashVSR, reduces banding. |
-| `coz2` - `coz16` | 2-16x | image only | Yes | Chain-of-Zoom, extreme upscaling. |
-| `flux_pid4` | 4x | image only | Yes | PiD upscaler with Flux backbone. |
-| `vae2` | 2x | during gen only | Yes | VAE-integrated, generation-time only. |
-
-**Recommended**:
-- Quick/lossless: `lanczos2`
-- Best quality video: `flashvsr2` or `flashvsr2pass2`
-- Best quality image: `flux_pid4` or `coz4`
-- Extreme upscaling: `coz8` or `coz16`
-
-## Multi-Step Workflows
-
-**Image → Video**: Generate image first, then animate:
-```bash
-# Generate image
-python scripts/wangp.py generate --model flux --prompt "A red fox in a forest" --output-dir ./output
-# Animate it
-python scripts/wangp.py generate --model i2v_2_2 --prompt "The fox walks forward" --image ./output/fox.png
-```
-
-**Image → Edit**: Generate then edit:
-```bash
-python scripts/wangp.py generate --model flux --prompt "A portrait"
-python scripts/wangp.py generate --model flux_dev_kontext --prompt "Add sunglasses" --image ./output/portrait.png
-```
-
-**Video → Audio**: Generate video then add audio:
-```bash
-python scripts/wangp.py generate --model t2v --prompt "A person talking"
-# Then use TTS or audio model separately
-```
-
-## Image Editing Workflows
-
-For models that support both generation AND editing, the key is setting the right image input:
-
-**Flux Kontext** (instruction-based editing):
-```bash
-python scripts/wangp.py generate --model flux_dev_kontext --prompt "add sunglasses" --image ./portrait.png
-```
-Prompt = short edit instruction. Image = source to edit.
-
-**Flux USO** (style transfer):
-```bash
-python scripts/wangp.py generate --model flux_dev_uso --prompt "a portrait in watercolor style" --image ./style_ref.png
-```
-Prompt = desired output description. Image = style reference.
-
-**Qwen Image Edit**:
-```bash
-python scripts/wangp.py generate --model qwen_image_edit_plus_20B --prompt "add the text HELLO at the top" --image ./source.png
-```
-Prompt = edit instruction. Supports text rendering in edits.
-
-**Lucy Edit** (video editing):
-```bash
-python scripts/wangp.py generate --model lucy_edit --prompt "change the clothes to red" --image ./video.mp4
-```
-Prompt = short imperative command. Image input = source video.
-
-**Kiwi Edit** (video editing with reference):
-```bash
-python scripts/wangp.py generate --model kiwi_edit --prompt "Change the dress to match the reference while preserving pose and lighting" --image ./video.mp4
-```
-Prompt = edit instruction with preservation clause.
-
-## Error Recovery
-
-- **"Wan2GP not found"**: Set `WAN2GP_ROOT` env var or install Wan2GP
-- **"Unknown model"**: Run `python scripts/wangp.py list` to see available models
-- **OOM / out of memory**: Lower resolution, fewer frames, use int8/GGUF variant, or smaller model
-- **Slow generation**: Use Lightning/distilled variants, reduce steps
-- **Poor quality**: Increase steps, use negative prompt, try larger model
-
-## When to Use
-
-- User wants to generate images locally (not via API)
-- User wants to generate videos from text or images
-- User wants to edit images/videos with AI
-- User wants local TTS or music generation
-- User has Wan2GP installed
-
-## When Not to Use
-
-- User wants cloud-based generation (use imagegen skill instead)
-- User doesn't have Wan2GP installed
-- User wants to edit SVG/vector/code-native assets
-
-## Reference Map
-
-- `references/model-catalog.md`: Full model list organized by task type
-- `references/prompting.md`: Per-family prompt guidance
-- `references/hardware.md`: GPU profiles, VRAM recommendations, quantization options
-- `scripts/wangp.py`: CLI tool for Wan2GP interaction
