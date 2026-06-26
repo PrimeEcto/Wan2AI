@@ -46,13 +46,54 @@ Use `--output-dir /tmp/wangp-gallery` for all `generate` calls in the session. I
 ### Step C: Version & Update Check
 If `wan2gp_update_available`, offer `python scripts/wangp.py update` (handles git pull + requirements or heavy components via manage scripts).
 
-### Step D: Generate workflow
-Choose model (via hierarchy below), adapt prompt (critical — see prompting guidance), call generate with options.
+### Step D: Default Image Generation Workflow (MANDATORY unless user overrides)
+
+The default image generation workflow is a 4-step VRAM-discipline pattern. This is the standard for all sessions. The user may override individual steps (e.g. "skip upscale", "use flashvsr instead"), but the pattern itself is always the starting point.
+
+**Step D1: Unload first** — Clear any lingering models from VRAM before starting.
+```bash
+python scripts/wangp.py unload
+```
+
+**Step D2: Generate with no upscaling** — Always pass `--upscale off` to prevent the model's default spatial upsampler from consuming VRAM during generation.
+```bash
+python scripts/wangp.py generate \
+  --model <type> \
+  --prompt "..." \
+  --resolution WxH \
+  --steps N \
+  --upscale off \
+  --output-dir /tmp/wangp-gallery
+```
+
+**Step D3: Unload the generation model** — Free VRAM before loading the upscaler. The generation model and Flux PID4 upscaler cannot coexist in 12GB VRAM.
+```bash
+python scripts/wangp.py unload
+```
+
+**Step D4: Upscale with Flux PID4** — The preferred upscaler. Generates high-quality detail (not just interpolation). Produces 4x resolution (e.g. 768x1344 → 3072x5376).
+```bash
+python scripts/wangp.py upscale "<generated_file>" \
+  --method flux_pid4 \
+  --output-dir /tmp/wangp-gallery
+```
+
+**Why this pattern matters:**
+- WanGP does NOT auto-unload models on API calls or mode switches.
+- Running Flux PID4 while Krea/Flux/Wan is still in VRAM causes OOM on 12GB cards.
+- `--upscale off` prevents the default `lanczos2` spatial upsampler from running during generation, keeping the pipeline clean — upscale happens separately with the AI upscaler for much better quality.
+- This pattern scales to any model/upscale combination, not just Krea + Flux PID4.
+
+**When to deviate (ask user first):**
+- User explicitly says "no upscale" → skip D3/D4.
+- User wants a different upscaler (flashvsr2, lanczos4, coz4, etc.) → substitute in D4.
+- User wants to batch multiple generations before upscaling → run D2 in a loop, then D3 once, then D4 on each file.
+- Repeated calls with the same model and no upscale between → skip D1/D3 (faster reloads).
 
 ### Step E: Unload between model/operation switches (CRITICAL)
-WanGP keeps models in VRAM (no auto-unload on API calls or mode switches). "Unload All" exists in UI; the wrapper's `unload` command frees VRAM (torch cache + model unload).
+WanGP keeps models in VRAM (no auto-unload on API calls or mode switches). The wrapper's `unload` command frees VRAM (torch cache + model unload).
 
-**Always unload when switching** image ↔ video, different model families, or before upscaling a just-generated asset.
+**Always unload when switching** image ↔ video, different model families, or before upscaling a just-generated asset (covered by D1/D3 above).
 
 **Do not unload** for repeated calls with the same model (faster reloads).
 
@@ -129,7 +170,7 @@ The skill's `defaults <model_type>` and prompt adaptation logic in scripts/wangp
 
 - `detect`: Hardware + install scan.
 - `defaults <model>`: Baseline resolution, steps, guidance, etc. for that model_type.
-- `generate --model <type> --prompt "..." [--resolution WxH] [--steps N] [--image path] [--frames N] [--negative "..."] [--guidance-scale F] [--attention MODE] [--profile N] [--upscale METHOD] [--output-dir DIR] [--seed N] [--show]`: Core generation. Maps to appropriate WanGP finetune/mode or API call.
+- `generate --model <type> --prompt "..." [--resolution WxH] [--steps N] [--image path] [--frames N] [--negative "..."] [--guidance-scale F] [--attention MODE] [--profile N] [--upscale METHOD|off] [--output-dir DIR] [--seed N] [--show]`: Core generation. Maps to appropriate WanGP finetune/mode or API call. Use `--upscale off` for the default generate-then-upscale workflow (see Step D).
 - `upscale <path> --method flashvsr2|lanczos2|... [--show]`
 - `unload`: Free VRAM (critical between ops).
 - `list`: Available model_types the wrapper knows.
