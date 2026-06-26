@@ -1,12 +1,12 @@
 # Wan2AI
 
+<p align="center">
+  <img src="wangp/assets/banner.png" width="100%" alt="Wan2AI">
+</p>
+
 **Universal AI agent skill for generating images, videos, audio, and music with 200+ local models.**
 
 Install once, generate anywhere. Works with MiMoCode, Claude Code, Codex, Cursor, Gemini CLI, Hermes Agent, and any harness that supports the [Agent Skills specification](https://agentskills.io).
-
-<p align="center">
-  <img src="wangp/assets/wangp.svg" width="80" alt="Wan2AI">
-</p>
 
 ---
 
