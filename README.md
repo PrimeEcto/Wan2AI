@@ -1,67 +1,57 @@
 # Wan2AI
 
-**Universal AI agent skill for generating images, videos, audio, and music using local AI models via [Wan2GP](https://github.com/DeepBeepMeep/Wan2GP).**
+**Universal AI agent skill for generating images, videos, audio, and music with 200+ local models.**
 
-Install once, generate anywhere — works with MiMoCode, Claude Code, Codex, Cursor, Gemini CLI, and any agent that supports the [Agent Skills specification](https://agentskills.io).
+Install once, generate anywhere. Works with MiMoCode, Claude Code, Codex, Cursor, Gemini CLI, Hermes Agent, and any harness that supports the [Agent Skills specification](https://agentskills.io).
+
+<p align="center">
+  <img src="wangp/assets/wangp.svg" width="80" alt="Wan2AI">
+</p>
 
 ---
 
 ## What It Does
 
-Wan2AI gives AI agents the ability to:
-
 | Capability | Models |
 |---|---|
-| **Generate images** | Flux, Qwen Image, Z-Image, HiDream, Ideogram, Krea, Chroma |
-| **Generate videos** | Wan 2.1/2.2, HunyuanVideo, LTX-Video, Kandinsky, SkyReels, LongCat |
+| **Generate images** | Flux 2 Dev, Qwen Image 2512, Z-Image, Krea 2, HiDream, Ideogram, Chroma |
+| **Generate videos** | Wan 2.2, HunyuanVideo 1.5, LTX-2, Kandinsky 5, SkyReels, LongCat |
 | **Edit images** | Flux Kontext, Qwen Edit, DreamOmni2, USO, UMO |
 | **Edit videos** | Lucy Edit, Kiwi Edit, Chrono Edit, Vace, Ditto |
 | **Animate characters** | Multitalk, Infinitetalk, Hunyuan Avatar, SCAIL, Steady Dancer, Ovi |
 | **Generate speech** | IndexTTS2, Chatterbox, Qwen3 TTS, OmniVoice, KugelAudio |
 | **Create music** | ACE-Step, Stable Audio 3, HeartMuLa |
 
-Over **200 models** with hardware-aware selection, model-specific prompting guidance, and automatic terminal image display.
+### Key Features
+
+- **Hardware-aware** — auto-detects GPU/VRAM and recommends models that actually fit
+- **Model-specific prompting** — each model family has different conventions; the agent knows them all
+- **Auto-presets** — Lightning LoRAs for Qwen, Turbo LoRAs for Flux, applied automatically
+- **OOM recovery** — detects out-of-memory errors and falls back to smaller models or fewer steps
+- **Browser gallery** — live image viewer with auto-refresh, history, and zoom
+- **Auto-install** — if Wan2GP isn't found, offers to install it via Pinokio headlessly
 
 ---
 
-## Prerequisites
+## Quick Start
 
-### 1. Install Wan2GP
-
-Wan2AI requires [Wan2GP](https://github.com/DeepBeepMeep/Wan2GP) to be installed and working.
-
-**Recommended: Install via [Pinokio](https://pinokio.computer)**
-
-Pinokio is the simplest way to get Wan2GP running. It handles all dependencies, GPU setup, and model downloads automatically:
-
-1. Download and install [Pinokio](https://pinokio.computer)
-2. Search for **Wan2GP** in the Pinokio app
-3. Click **Install** — Pinokio handles everything
-4. Launch Wan2GP from Pinokio when you want to use it
-
-**Alternative: Manual installation**
-
-Follow the [Wan2GP README](https://github.com/DeepBeepMeep/Wan2GP) for manual setup. Requires Python 3.10+, CUDA (NVIDIA), ROCm (AMD), or MPS (Apple Silicon).
-
-### 2. Install the Skill
+### 1. Install the Skill
 
 ```bash
-npx skills add PrimeEcto/Wan2AI
+npx skills add PrimeEcto/Wan2AI -g
 ```
 
 That's it. The skill is now available to all supported AI agents on your system.
 
----
+### 2. Use It
 
-## Usage
-
-Once installed, just ask your AI agent to generate something:
+Open your AI agent and ask it to generate something:
 
 ```
 "Generate an image of a red fox in a snowy forest"
 ```
 ```
-"Make a video of a sunset over the ocean"
+"Make a video of a sunset over the ocean with cinematic camera movement"
 ```
 ```
 "Create a talking head video from this portrait"
@@ -70,193 +60,203 @@ Once installed, just ask your AI agent to generate something:
 "Generate a lo-fi hip hop beat"
 ```
 
-The agent will:
-1. Detect your hardware (GPU, VRAM, RAM)
-2. Recommend the best model for your system
-3. Adapt the prompt to the model's conventions
-4. Generate the media
-5. Display the result in your terminal (if you opt in)
+The agent handles everything: hardware detection, model selection, prompt adaptation, generation, and display.
 
-### What the Agent Handles
+---
 
-- **Hardware detection**: Automatically selects models that fit your VRAM
-- **Model-specific prompting**: Each model family has different conventions — the agent knows them all
-- **Image editing workflows**: Properly chains generation → editing pipelines
-- **Terminal display**: Shows generated images directly in your terminal
+## Wan2GP Setup
+
+Wan2AI uses [Wan2GP](https://github.com/DeepBeepMeep/Wan2GP) as its generation engine. You have three options:
+
+### Option A: Let the Agent Install It
+
+If Wan2GP isn't installed, the agent will detect this and offer to install it automatically via [Pinokio](https://pinokio.computer)'s headless CLI:
+
+```
+"Wan2GP is not installed. I can install it automatically via Pinokio. Want me to proceed?"
+```
+
+If you say yes, it runs:
+```bash
+npm install -g pinokio
+pinokio download https://github.com/6Morpheus6/wan2gp
+pinokio run ~/.pinokio/api/wan2gp/install.js
+```
+
+This handles all dependencies, GPU setup, CUDA/torch installation, and model downloads — zero manual configuration.
+
+### Option B: Install Wan2GP via Pinokio (GUI)
+
+1. Download [Pinokio](https://pinokio.computer)
+2. Search for **Wan2GP** and click Install
+3. Launch Wan2GP from Pinokio
+
+### Option C: Manual Installation
+
+Follow the [Wan2GP README](https://github.com/DeepBeepMeep/Wan2GP). Requires Python 3.10+, CUDA (NVIDIA), ROCm (AMD), or MPS (Apple Silicon).
 
 ---
 
 ## How It Works
 
-Wan2AI is a [universal agent skill](https://agentskills.io) consisting of:
-
 ```
 wangp/
-├── SKILL.md              # Agent workflow instructions
-├── agents/openai.yaml    # UI metadata
-├── scripts/wangp.py      # Python CLI wrapping Wan2GP's API
+├── SKILL.md                    # Agent workflow + design principles
+├── agents/openai.yaml          # UI metadata
+├── scripts/
+│   ├── wangp.py                # Python CLI wrapping Wan2GP's API
+│   └── viewer/
+│       ├── server.py           # Gallery HTTP server with SSE
+│       ├── gallery.html        # Dark-themed gallery UI
+│       └── start.sh            # Start script
 └── references/
-    ├── model-catalog.md  # 200+ models organized by task
-    ├── prompting.md      # Per-family prompt conventions
-    └── hardware.md       # GPU profiles and VRAM recommendations
+    ├── model-catalog.md        # 200+ models organized by task
+    ├── prompting.md            # Per-family prompt conventions
+    └── hardware.md             # GPU profiles and VRAM recommendations
 ```
 
-The Python CLI (`wangp.py`) wraps Wan2GP's existing in-process API — no extra servers, no MCP dependencies, no code duplication. It:
+The Python CLI (`wangp.py`) wraps Wan2GP's existing in-process API — no extra servers, no MCP dependencies, no code duplication.
 
-- Auto-discovers your Wan2GP installation
-- Auto-detects your hardware via Wan2GP's `setup.py`
-- Re-execs in Wan2GP's Python environment if needed
-- Outputs clean JSON for agent consumption
-
-### CLI Commands
+### CLI Reference
 
 ```bash
-# Detect hardware and recommend settings
+# Detect hardware, Wan2GP version, and all installations
 python scripts/wangp.py detect
 
-# List available models (200+)
-python scripts/wangp.py list
+# List 200+ models with optional filters
 python scripts/wangp.py list --family flux
 python scripts/wangp.py list --available
 
 # Get default settings for a model
-python scripts/wangp.py defaults z_image
+python scripts/wangp.py defaults qwen_image_2512_20B
 
-# Get full model schema
-python scripts/wangp.py schema flux_dev_kontext
+# Generate with preset LoRA and gallery output
+python scripts/wangp.py generate \
+  --model qwen_image_2512_20B \
+  --prompt "a red fox in snow" \
+  --lora "https://huggingface.co/DeepBeepMeep/Qwen_image/resolve/main/loras_accelerators/Qwen-Image-2512-Lightning-4steps-V1.0-bf16.safetensors" \
+  --output-dir /tmp/wangp-gallery \
+  --show
 
-# Generate with auto-display
-python scripts/wangp.py generate --model z_image --prompt "a red fox" --show
+# Upscale an existing image
+python scripts/wangp.py upscale image.jpg --method lanczos2
 
-# Display any image in terminal
-python scripts/wangp.py show path/to/image.jpg
+# Check for Wan2GP updates
+python scripts/wangp.py update
 ```
 
 ---
 
-## Supported Models
+## Browser Gallery
 
-### Image Generation
+Wan2AI includes a built-in image gallery that opens in your browser. Images appear automatically as they're generated — no manual refresh needed.
 
-| Model | Params | Steps | Notes |
+```
+Agent: "Would you like a live gallery in your browser?"
+User:  "Yes"
+Agent: *starts server, opens browser*
+       *all generations stream to gallery automatically*
+```
+
+**Features:**
+- Live auto-refresh with toast notifications for new images
+- Gallery history with clickable thumbnails
+- Click to zoom, arrow keys to navigate
+- Image dimensions and filename metadata
+- Dark theme optimized for viewing generated images
+- Keyboard shortcuts: `←` `→` navigate, `Space` zoom, `Esc` close
+
+---
+
+## Supported Models (Highlights)
+
+### Image Generation (12GB VRAM recommended tier)
+
+| Model | Params | Steps | Best For |
 |---|---|---|---|
-| `flux` | 12B | default | General-purpose, short prompts |
-| `flux_schnell` | 12B | 10 | Fast Flux |
-| `flux_chroma` | 8.9B | 20 | Strong base model |
-| `flux2_dev` | 32B | default | Latest generation, high VRAM |
-| `z_image` | 6B | 8 | Fast, efficient, NAG-guided |
-| `z_image_twinflow_turbo` | 6B | 2 | Ultra-fast distilled |
-| `qwen_image_20B` | 20B | default | Best text rendering in images |
-| `hidream_o1` | 10B | 50 | Unified text/pixel/reference |
-| `ideogram4` | 9.3B | default | Typography, layout control |
-| `krea2_raw` | - | 52 | Aesthetic photography focus |
+| `qwen_image_2512_20B` + Lightning | 20B | 4 | Text rendering + realism |
+| `krea2_turbo` | ~12B | 8 | Aesthetic photography |
+| `ideogram4` + Turbo | 9.3B | 12 | Typography, layouts |
+| `z_image` | 6B | 8 | Fast generation |
+| `flux` + Turbo Alpha | 12B | 10 | General purpose |
+| `flux2_klein_9B` | 9B | 4 | Fast distilled Flux 2 |
 
 ### Video Generation
 
-| Model | Params | Steps | Notes |
+| Model | Params | Steps | Best For |
 |---|---|---|---|
-| `t2v` / `t2v_2_2` | 14B | default | Best quality Wan T2V |
-| `t2v_sf` | 14B | 4 | Lightning fast |
-| `i2v` / `i2v_2_2` | 14B | default | Image-to-video |
-| `hunyuan` | 13B | default | Excellent T2V quality |
-| `hunyuan_1_5_t2v` | 8B | 30 | Lower VRAM Hunyuan |
+| `t2v_sf` (Lightning) | 14B | 4 | Fast text-to-video |
+| `t2v_2_2` | 14B | 30 | Best quality T2V |
 | `ltx2_22B_distilled` | 22B | 8 | Fast with audio |
-| `moviigen` | 14B | default | 1080p cinematic |
+| `hunyuan_1_5_t2v` | 8B | 30 | Lower VRAM |
+| `i2v_2_2` | 14B | 30 | Image-to-video |
 
-### Video Editing
-
-| Model | Params | Notes |
-|---|---|---|
-| `lucy_edit` | 5B | Short imperative edit commands |
-| `kiwi_edit` | 5B | Edit with reference images |
-| `vace_14B` | 14B | ControlNet for video |
-| `vace_ditto_14B` | 14B | SOTA instruction editing |
-
-### TTS / Audio / Music
-
-| Model | Notes |
-|---|---|
-| `index_tts2` | Emotion tags, multi-speaker |
-| `chatterbox` | Multilingual TTS |
-| `qwen3_tts_base` | Voice cloning |
-| `ace_step_v1_5` | Music generation |
-| `stable_audio3_small` | Music/SFX up to 120s |
-
-See [references/model-catalog.md](wangp/references/model-catalog.md) for the complete list.
+See [references/model-catalog.md](wangp/references/model-catalog.md) for the complete 200+ model list.
 
 ---
 
-## Image Display
+## Auto-Presets
 
-Wan2AI can display generated images directly in your terminal:
+The agent automatically applies acceleration LoRAs when you request specific models:
 
-- **`viu`** — Rust terminal image viewer (recommended)
-- **`chafa`** — Versatile terminal viewer
-- **iTerm2 / Kitty** — Native inline image protocols
-- **PIL fallback** — Opens in default OS image viewer
+| Request | Preset Applied | Steps |
+|---|---|---|
+| Qwen Image (any) | `qwen_image_2512_20B` + Lightning 4-step LoRA | 4 |
+| Qwen Image (OOM) | Fallback to Lightning 8-step LoRA | 8 |
+| Flux 2 Dev 32B | Turbo LoRA from HuggingFace | 8 |
+| Flux 1 (any) | Turbo Alpha LoRA | 10 |
+| Krea 2 | `krea2_turbo` (distilled) | 8 |
+| Ideogram | Turbo preset | 12 |
 
-Install a terminal viewer for the best experience:
-
-```bash
-# Rust (recommended)
-cargo install viu
-
-# macOS
-brew install chafa
-
-# Ubuntu/Debian
-apt install chafa
-
-# Arch
-pacman -S chafa
-```
-
-The agent will ask once per session if you want images displayed, then auto-install a viewer if needed.
+If a generation runs out of memory, the agent detects it and automatically retries with a smaller model or fewer steps.
 
 ---
 
 ## Hardware Requirements
 
-| VRAM | Recommended Models |
+| VRAM | What You Can Run |
 |---|---|
-| **24 GB+** | All models at full quality |
+| **24 GB+** | Everything at full quality |
 | **16 GB** | Most models with int8 quantization |
-| **12 GB** | 7B models, GGUF variants, Z-Image |
-| **8 GB** | 1.3B models, GGUF Q4, small image models |
+| **12 GB** | Image models (Qwen Lightning, Z-Image, Krea 2 Turbo), 14B video with int8 |
+| **8 GB** | 1.3B video models, GGUF variants, small image models |
 | **6 GB** | GGUF Q4 only |
 
-The agent auto-detects your hardware and recommends appropriate models.
+The agent auto-detects your hardware and picks models that fit.
 
 ---
 
 ## Agent Support
 
-Wan2AI works with any agent that supports the Agent Skills specification:
+Wan2AI works with any agent that supports the [Agent Skills specification](https://agentskills.io):
 
-- **MiMoCode** / **Codex** — `npx skills add PrimeEcto/Wan2AI`
-- **Claude Code** — `npx skills add PrimeEcto/Wan2AI`
-- **Cursor** — `npx skills add PrimeEcto/Wan2AI`
-- **Gemini CLI** — `npx skills add PrimeEcto/Wan2AI`
+| Agent | Install Command |
+|---|---|
+| MiMoCode | `npx skills add PrimeEcto/Wan2AI -g` |
+| Codex | `npx skills add PrimeEcto/Wan2AI -g` |
+| Claude Code | `npx skills add PrimeEcto/Wan2AI -g` |
+| Cursor | `npx skills add PrimeEcto/Wan2AI -g` |
+| Gemini CLI | `npx skills add PrimeEcto/Wan2AI -g` |
+| Hermes Agent | `npx skills add PrimeEcto/Wan2AI -g` |
+| Cline | `npx skills add PrimeEcto/Wan2AI -g` |
+| Roo Code | `npx skills add PrimeEcto/Wan2AI -g` |
+| GitHub Copilot | `npx skills add PrimeEcto/Wan2AI -g` |
+| OpenCode | `npx skills add PrimeEcto/Wan2AI -g` |
+
+Use `-g` for global installation (available to all agents).
 
 ---
 
 ## Troubleshooting
 
-**"Wan2GP not found"**
-- Set `WAN2GP_ROOT` to your Wan2GP `app` directory
-- Or install Wan2GP via Pinokio (easiest)
-
-**"Unknown model"**
-- Run `python scripts/wangp.py list` to see all available models
-
-**Out of memory**
-- Use a smaller model (`t2v_1.3B` instead of `t2v`)
-- Use GGUF quantized variants
-- Lower resolution or frame count
-
-**Images not displaying**
-- Install `viu`: `cargo install viu`
-- Or `chafa`: `apt install chafa` / `brew install chafa`
+| Problem | Solution |
+|---|---|
+| "Wan2GP not found" | Let the agent install it via Pinokio, or set `WAN2GP_ROOT` env var |
+| "Unknown model" | Run `python scripts/wangp.py list` to see all 200+ models |
+| Out of memory | Agent auto-detects OOM and retries with smaller model. Or use `z_image`, `flux2_klein_4B` |
+| Slow generation | Use distilled variants: `t2v_sf`, `krea2_turbo`, `ltx2_22B_distilled` |
+| Gallery not opening | Check that port isn't blocked. Server runs on `127.0.0.1` by default |
+| Update available | Agent detects and offers to run `python scripts/wangp.py update` |
 
 ---
 
