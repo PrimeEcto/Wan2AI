@@ -59,6 +59,26 @@ If Wan2GP is found, check `wan2gp_update_available`. If true, ask the user befor
 
 Now proceed with the normal workflow (choose model, adapt prompt, generate).
 
+### Step E: Unload between operations (CRITICAL)
+
+Wan2GP does NOT automatically unload models from VRAM when using the API. You MUST unload the current model before switching to a different operation (e.g., generating an image then upscaling it, or switching from image gen to video gen).
+
+**ALWAYS run this between different model types:**
+
+```bash
+python scripts/wangp.py unload
+```
+
+**When to unload:**
+- After generating an image, BEFORE upscaling it
+- After generating with one model, BEFORE generating with a different model
+- After upscaling, BEFORE generating again
+- Any time you switch between image gen, video gen, editing, or upscaling
+
+**When NOT to unload:**
+- Running the same model multiple times in a row (keep it loaded for speed)
+- The model will auto-reload on next use if unloaded
+
 **Do NOT skip Steps A and B. They are mandatory for every session.**
 
 ---

@@ -393,6 +393,20 @@ def cmd_update(wan2gp_root: Path) -> None:
         print(json.dumps({"error": f"git pull failed: {r.stderr.strip()}"}))
 
 
+def cmd_unload(wan2gp_root: Path) -> None:
+    """Unload all models from VRAM/RAM."""
+    import io
+    old_stdout = sys.stdout
+    sys.stdout = io.StringIO()
+    try:
+        from shared.api import init
+        session = init(root=wan2gp_root, console_output=False)
+        session.close()
+    finally:
+        sys.stdout = old_stdout
+    print(json.dumps({"status": "unloaded", "message": "All models unloaded from VRAM/RAM."}))
+
+
 def cmd_list(args, wan2gp_root: Path) -> None:
     import io
     old_stdout = sys.stdout
@@ -757,6 +771,7 @@ def main(argv: list[str] | None = None) -> int:
     upscale_p.add_argument("--show", action="store_true", help="Display result after upscaling")
 
     subparsers.add_parser("update", help="Check for and apply Wan2GP updates")
+    subparsers.add_parser("unload", help="Unload all models from VRAM/RAM")
 
     args = parser.parse_args(argv)
 
@@ -797,6 +812,8 @@ def main(argv: list[str] | None = None) -> int:
         cmd_upscale(args, wan2gp_root)
     elif args.command == "update":
         cmd_update(wan2gp_root)
+    elif args.command == "unload":
+        cmd_unload(wan2gp_root)
 
     return 0
 
