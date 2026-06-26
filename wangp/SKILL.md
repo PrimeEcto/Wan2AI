@@ -5,7 +5,63 @@ description: "Generate images and videos using local AI models via Wan2GP. Use w
 
 # Wan2GP Skill
 
-Generate images and videos locally using Wan2GP's 200+ AI models. Covers text-to-image, image-to-video, text-to-video, image editing, character animation, TTS, and music generation.
+Generate images and videos locally using Wan2GP's 200+ AI models.
+
+## MANDATORY STARTUP CHECKLIST (do these IN ORDER before ANYTHING else)
+
+**STOP. Read this entire checklist before taking any action. Execute each step in order. Do not skip steps.**
+
+### Step A: Ask before searching
+
+Before running `detect` or reading any Wan2GP files, ask the user:
+
+> "I need to find your Wan2GP installation. How would you like to proceed?"
+> 1. **Search for it** — I'll scan your drives (uses some tokens)
+> 2. **I'll navigate there myself** — I'll run from the Wan2GP directory
+> 3. **I don't have Wan2GP** — Install it via Pinokio
+
+Use the `question` tool for MiMoCode/Codex. For other harnesses, present as a numbered list.
+
+Only proceed to Step B if the user chooses option 1 or 3.
+
+### Step B: Offer browser gallery
+
+After the user responds, ask:
+
+> "Would you like a live gallery in your browser? Images will appear automatically as they're generated with a dark-themed viewer, history, and zoom."
+
+If yes, start the server using the skill's `scripts/viewer/start.sh`:
+
+```bash
+SKILL_DIR="$(dirname "$(readlink -f "$(which wangp 2>/dev/null || echo ~/.agents/skills/wangp/scripts/wangp.py)")")"
+bash "$SKILL_DIR/scripts/viewer/start.sh" --gallery-dir /tmp/wangp-gallery --open
+```
+
+Save the `gallery_dir` from the output. Use it as `--output-dir` for ALL generations.
+
+### Step C: Detect hardware
+
+```bash
+python scripts/wangp.py detect
+```
+
+If Wan2GP is not found and the user chose option 1 in Step A, offer Pinokio install:
+
+```bash
+npm install -g pinokio
+pinokio download https://github.com/6Morpheus6/wan2gp
+pinokio run ~/.pinokio/api/wan2gp/install.js
+```
+
+If Wan2GP is found, check `wan2gp_update_available`. If true, ask the user before updating.
+
+### Step D: Generate
+
+Now proceed with the normal workflow (choose model, adapt prompt, generate).
+
+**Do NOT skip Steps A and B. They are mandatory for every session.**
+
+---
 
 ## Prerequisites
 
